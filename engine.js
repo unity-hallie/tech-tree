@@ -150,8 +150,11 @@ const state = {
   snowflakes: [],
   wind: { x: 0.3, y: 0.1 },
 
-  // Stars
+  // Stars & Constellations (the tech tree)
   stars: [],
+  constellations: [],
+  skyView: false,       // toggle to look UP at the sky/tech tree
+  skyViewTransition: 0, // 0 = ground, 1 = full sky
 
   // Aurora
   auroraFlash: 0,
@@ -307,25 +310,224 @@ function generateReindeer() {
 }
 
 function generateStars() {
+  // Background stars
   state.stars = [];
-  for (let i = 0; i < 150; i++) {
+  for (let i = 0; i < 200; i++) {
+    // Distribute across the full sky dome in polar coordinates from pole
+    const dist = Math.random() * 0.95; // distance from pole (0=pole, 1=horizon)
+    const angle = Math.random() * Math.PI * 2;
     state.stars.push({
-      x: Math.random() * 2 - 1,
-      y: Math.random() * 0.5 - 0.1,
-      brightness: Math.random() * 0.7 + 0.3,
-      size: Math.random() > 0.93 ? 2 : 1,
-      isBear: false,
+      dist, angle,
+      brightness: Math.random() * 0.6 + 0.2,
+      size: Math.random() > 0.94 ? 1.5 : 0.8,
+      constellation: null,
     });
   }
-  // Ursa Major — the Bear
-  const ursaPoints = [
-    { x: -0.05, y: 0.05 }, { x: -0.02, y: 0.03 },
-    { x: 0.01, y: 0.04 }, { x: 0.04, y: 0.06 },
-    { x: 0.06, y: 0.04 }, { x: 0.05, y: 0.01 },
-    { x: 0.03, y: -0.01 },
+
+  // ============================================================
+  // CONSTELLATIONS — The Tech Tree
+  // Each constellation is a knowledge node. Stars are positioned
+  // in polar coordinates: dist from pole, angle around pole.
+  // Lines connect the stars. Unlocking knowledge lights them up.
+  // ============================================================
+
+  state.constellations = [
+    {
+      id: 'boahji',
+      name: 'Boahji',
+      subtitle: 'The Rivet — Pole Star',
+      knowledge: 'axisMundi',
+      description: 'The sky hangs from this point. Strike it and the world ends.',
+      color: [200, 180, 255],
+      stars: [{ dist: 0, angle: 0 }], // The pole itself
+      lines: [],
+      unlocked: false,
+      tier: 0, // root
+    },
+    {
+      id: 'otso',
+      name: 'Otso',
+      subtitle: 'The Great Bear — Ursa Major',
+      knowledge: 'bear',
+      description: 'Lowered from the sky in a golden basket. Returns through ceremony.',
+      color: [255, 200, 120],
+      stars: [
+        { dist: 0.18, angle: 0.3 },
+        { dist: 0.22, angle: 0.45 },
+        { dist: 0.25, angle: 0.6 },
+        { dist: 0.23, angle: 0.78 },
+        { dist: 0.28, angle: 0.9 },
+        { dist: 0.32, angle: 0.82 },
+        { dist: 0.34, angle: 0.68 },
+      ],
+      lines: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,3]],
+      unlocked: false,
+      tier: 1,
+    },
+    {
+      id: 'sarva',
+      name: 'Sarva',
+      subtitle: 'The Great Reindeer',
+      knowledge: 'reindeer',
+      description: 'Spans half the sky. The herd that leads all herds.',
+      color: [160, 210, 180],
+      stars: [
+        { dist: 0.35, angle: 2.0 },
+        { dist: 0.4, angle: 2.2 },
+        { dist: 0.45, angle: 2.35 },
+        { dist: 0.5, angle: 2.5 },
+        { dist: 0.42, angle: 2.6 },
+        { dist: 0.38, angle: 2.45 },
+        { dist: 0.48, angle: 2.15 },
+        { dist: 0.55, angle: 2.4 },
+      ],
+      lines: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,1],[2,6],[6,7],[7,3]],
+      unlocked: false,
+      tier: 1,
+    },
+    {
+      id: 'favdna',
+      name: 'Fávdna',
+      subtitle: 'The Hunter\'s Bow',
+      knowledge: 'stone',
+      description: 'The hunter aims but must never fire. The arrow guards the rivet.',
+      color: [200, 160, 140],
+      stars: [
+        { dist: 0.12, angle: 1.5 },
+        { dist: 0.18, angle: 1.65 },
+        { dist: 0.22, angle: 1.8 },
+        { dist: 0.2, angle: 1.95 },
+        { dist: 0.15, angle: 2.05 },
+      ],
+      lines: [[0,1],[1,2],[2,3],[3,4]],
+      unlocked: true, // you start with stone
+      tier: 1,
+    },
+    {
+      id: 'tuli',
+      name: 'Tuli',
+      subtitle: 'The Flame — Hearth Fire',
+      knowledge: 'fire',
+      description: 'The first gift. Carried from cave to cave. Never let it die.',
+      color: [255, 160, 80],
+      stars: [
+        { dist: 0.15, angle: 4.0 },
+        { dist: 0.12, angle: 4.15 },
+        { dist: 0.18, angle: 4.3 },
+        { dist: 0.14, angle: 4.45 },
+      ],
+      lines: [[0,1],[1,2],[2,3],[3,0]],
+      unlocked: true, // you start with fire
+      tier: 1,
+    },
+    {
+      id: 'joukahainen',
+      name: 'Joukahainen',
+      subtitle: 'The Singer — Oral Tradition',
+      knowledge: 'song',
+      description: 'Knowledge lives in the voice. Songs carry what writing cannot.',
+      color: [180, 200, 255],
+      stars: [
+        { dist: 0.2, angle: 5.0 },
+        { dist: 0.25, angle: 5.15 },
+        { dist: 0.28, angle: 5.3 },
+        { dist: 0.22, angle: 5.4 },
+        { dist: 0.3, angle: 5.0 },
+      ],
+      lines: [[0,1],[1,2],[2,3],[3,0],[0,4]],
+      unlocked: true, // you start with song
+      tier: 1,
+    },
+    {
+      id: 'ilmarinen',
+      name: 'Ilmarinen',
+      subtitle: 'The Smith — Cord & Craft',
+      knowledge: 'cord',
+      description: 'Three-ply twisted fiber. The first counting. The beginning of making.',
+      color: [200, 180, 160],
+      stars: [
+        { dist: 0.3, angle: 3.5 },
+        { dist: 0.35, angle: 3.65 },
+        { dist: 0.33, angle: 3.8 },
+        { dist: 0.38, angle: 3.45 },
+      ],
+      lines: [[0,1],[1,2],[0,3],[3,1]],
+      unlocked: false,
+      tier: 2,
+    },
+    {
+      id: 'louhi',
+      name: 'Louhi',
+      subtitle: 'Mistress of Pohjola — Pigment',
+      knowledge: 'pigment',
+      description: 'Red ochre on stone. The first mark that says: I was here.',
+      color: [220, 120, 100],
+      stars: [
+        { dist: 0.4, angle: 4.8 },
+        { dist: 0.45, angle: 4.95 },
+        { dist: 0.48, angle: 5.1 },
+        { dist: 0.43, angle: 5.2 },
+        { dist: 0.5, angle: 4.85 },
+      ],
+      lines: [[0,1],[1,2],[2,3],[3,0],[0,4],[4,1]],
+      unlocked: false,
+      tier: 2,
+    },
+    {
+      id: 'sampo',
+      name: 'Sampo',
+      subtitle: 'The World Mill — Agriculture',
+      knowledge: 'agriculture',
+      description: 'The mill that grinds abundance. It will break. The ash determines what grows.',
+      color: [220, 180, 80],
+      stars: [
+        { dist: 0.55, angle: 1.0 },
+        { dist: 0.6, angle: 1.15 },
+        { dist: 0.58, angle: 1.35 },
+        { dist: 0.52, angle: 1.25 },
+        { dist: 0.57, angle: 1.18 },
+      ],
+      lines: [[0,1],[1,2],[2,3],[3,0],[4,0],[4,1],[4,2],[4,3]],
+      unlocked: false,
+      tier: 3,
+    },
+    {
+      id: 'draco',
+      name: 'Lohikäärme',
+      subtitle: 'The Dragon — Star Knowledge',
+      knowledge: 'stars',
+      description: 'Wraps around the pole. Once WAS the pole star. Precession made visible.',
+      color: [150, 180, 220],
+      stars: [
+        { dist: 0.08, angle: 0.5 },
+        { dist: 0.1, angle: 1.0 },
+        { dist: 0.13, angle: 1.5 },
+        { dist: 0.11, angle: 2.0 },
+        { dist: 0.09, angle: 2.5 },
+        { dist: 0.12, angle: 3.0 },
+        { dist: 0.14, angle: 3.5 },
+        { dist: 0.1, angle: 4.0 },
+      ],
+      lines: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7]],
+      unlocked: false,
+      tier: 2,
+    },
   ];
-  ursaPoints.forEach(p => {
-    state.stars.push({ x: p.x, y: p.y, brightness: 1.0, size: 2.5, isBear: true });
+
+  // Add constellation stars to the star array with references
+  state.constellations.forEach(c => {
+    c.starIndices = [];
+    c.stars.forEach(cs => {
+      const idx = state.stars.length;
+      c.starIndices.push(idx);
+      state.stars.push({
+        dist: cs.dist,
+        angle: cs.angle,
+        brightness: 1.0,
+        size: 2.5,
+        constellation: c.id,
+      });
+    });
   });
 }
 
@@ -396,6 +598,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyE') interactAtLocation();
   if (e.code === 'KeyB') slashAndBurn();
   if (e.code === 'KeyF') followReindeer();
+  if (e.code === 'Tab') { state.skyView = !state.skyView; e.preventDefault(); }
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -733,6 +936,15 @@ function update() {
   // --- Aurora flash decay ---
   if (state.auroraFlash > 0) state.auroraFlash *= 0.97;
 
+  // --- Sync constellation unlocks with knowledge ---
+  state.constellations.forEach(c => {
+    c.unlocked = state.knowledge[c.knowledge] > 0;
+  });
+
+  // --- Sky view transition ---
+  const skyTarget = state.skyView ? 1 : 0;
+  state.skyViewTransition += (skyTarget - state.skyViewTransition) * 0.06;
+
   // --- Messages decay ---
   state.messages.forEach(m => {
     m.alpha = Math.max(0, 1.0 - (state.tick - m.tick) / 300);
@@ -817,37 +1029,50 @@ function render() {
   const w = W();
   const h = H();
   const daylight = getDaylight();
+  const svt = state.skyViewTransition; // 0 = ground, 1 = sky
 
-  // --- Sky ---
-  const skyTop = lerpColor([12, 16, 30], [90, 130, 180], daylight * 0.6);
-  const skyBottom = lerpColor([18, 20, 32], [110, 130, 155], daylight * 0.5);
+  // --- Sky background ---
+  // In sky view, always dark; in ground view, based on daylight
+  const effectiveDaylight = daylight * (1 - svt * 0.85);
+  const skyTop = lerpColor([6, 8, 18], [90, 130, 180], effectiveDaylight * 0.6);
+  const skyBottom = lerpColor([8, 10, 22], [110, 130, 155], effectiveDaylight * 0.5);
   const grad = ctx.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, `rgb(${skyTop.join(',')})`);
   grad.addColorStop(1, `rgb(${skyBottom.join(',')})`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  // --- Stars ---
-  const nightAmount = 1.0 - daylight;
-  if (nightAmount > 0.2) renderStars(nightAmount);
+  // --- Stars & Constellations (always render, visibility varies) ---
+  const nightAmount = Math.max(1.0 - daylight, svt * 0.9);
+  if (nightAmount > 0.1) renderStars(nightAmount, svt);
 
   // --- Aurora ---
   if (nightAmount > 0.3) renderAurora(nightAmount);
 
-  // --- Terrain ---
-  renderTerrain();
+  // --- Ground elements (fade out during sky view) ---
+  const groundAlpha = 1 - svt;
+  if (groundAlpha > 0.05) {
+    ctx.globalAlpha = groundAlpha;
+    renderTerrain();
+    renderBears();
+    renderReindeer();
+    renderBand();
+    renderSnow(daylight);
+    ctx.globalAlpha = 1;
+  }
 
-  // --- Bears ---
-  renderBears();
+  // --- Constellation labels & connections (sky view overlay) ---
+  if (svt > 0.1) renderConstellationOverlay(svt, nightAmount);
 
-  // --- Reindeer ---
-  renderReindeer();
-
-  // --- Band ---
-  renderBand();
-
-  // --- Snow ---
-  renderSnow(daylight);
+  // --- Sky view label ---
+  if (svt > 0.3) {
+    ctx.fillStyle = `rgba(200, 180, 240, ${svt * 0.5})`;
+    ctx.font = '11px Georgia';
+    ctx.textAlign = 'center';
+    ctx.letterSpacing = '3px';
+    ctx.fillText('T H E   S K Y   T R E E', w / 2, 50);
+    ctx.textAlign = 'left';
+  }
 
   // --- Messages ---
   renderMessages();
@@ -859,24 +1084,152 @@ function getDaylight() {
   return Math.max(0.15, Math.min(1, seasonalDay * 0.65 + dailyCycle * 0.25 + 0.1));
 }
 
-function renderStars(nightAmount) {
+// Convert polar sky coordinates to screen position
+function skyToScreen(dist, angle, rotation, svt) {
   const w = W();
+  const h = H();
+  const cx = w / 2;
+  const cy = h / 2;
+
+  // In ground view: project onto upper hemisphere
+  // In sky view: full circular projection centered on screen
+  const groundRadius = Math.min(w, h) * 0.3;
+  const skyRadius = Math.min(w, h) * 0.42;
+  const radius = groundRadius + (skyRadius - groundRadius) * svt;
+
+  // Ground view: compressed to upper portion of screen
+  // Sky view: centered on screen
+  const groundCy = h * 0.25;
+  const skyCy = cy;
+  const centerY = groundCy + (skyCy - groundCy) * svt;
+
+  const a = angle + rotation;
+  const r = dist * radius;
+
+  return {
+    x: cx + Math.cos(a) * r,
+    y: centerY + Math.sin(a) * r * (0.4 + svt * 0.6), // flatten in ground view
+  };
+}
+
+function renderStars(nightAmount, svt) {
   const rotation = state.tick * 0.0002;
-  state.stars.forEach(star => {
-    const sx = (star.x * Math.cos(rotation) - star.y * Math.sin(rotation) + 1) * 0.5 * w;
-    const sy = star.y * Math.cos(rotation) + star.x * Math.sin(rotation);
-    const screenY = (sy + 0.3) * H() * 0.4;
-    if (screenY < H() * 0.5) {
-      if (star.isBear) {
-        const pulse = Math.sin(state.tick * 0.015) * 0.15 + 0.85;
-        ctx.fillStyle = `rgba(255, 215, 140, ${star.brightness * nightAmount * pulse * 0.8})`;
-        ctx.beginPath(); ctx.arc(sx, screenY, star.size * 1.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = `rgba(255, 200, 100, ${0.08 * nightAmount * pulse})`;
-        ctx.beginPath(); ctx.arc(sx, screenY, 6, 0, Math.PI * 2); ctx.fill();
+
+  // Compute screen positions for all stars (used by constellation overlay too)
+  state.stars._screenPositions = [];
+
+  state.stars.forEach((star, idx) => {
+    const pos = skyToScreen(star.dist, star.angle, rotation, svt);
+    state.stars._screenPositions[idx] = pos;
+
+    // Find constellation for this star
+    const constellation = star.constellation
+      ? state.constellations.find(c => c.id === star.constellation)
+      : null;
+
+    if (constellation) {
+      const unlocked = constellation.unlocked;
+      const col = constellation.color;
+      const pulse = Math.sin(state.tick * 0.015 + star.angle * 3) * 0.15 + 0.85;
+
+      if (unlocked) {
+        // Bright, colored, pulsing
+        const alpha = nightAmount * pulse * 0.9;
+        ctx.fillStyle = `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${alpha})`;
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, star.size * (1.2 + svt * 0.8), 0, Math.PI * 2); ctx.fill();
+        // Glow
+        ctx.fillStyle = `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${alpha * 0.2})`;
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, star.size * (3 + svt * 3), 0, Math.PI * 2); ctx.fill();
       } else {
-        ctx.fillStyle = `rgba(200, 210, 240, ${star.brightness * nightAmount * 0.5})`;
-        ctx.beginPath(); ctx.arc(sx, screenY, star.size, 0, Math.PI * 2); ctx.fill();
+        // Dim, hint of color
+        const dimAlpha = nightAmount * 0.25 * (0.5 + svt * 0.5);
+        ctx.fillStyle = `rgba(${Math.floor(col[0]*0.5+100)}, ${Math.floor(col[1]*0.5+100)}, ${Math.floor(col[2]*0.5+100)}, ${dimAlpha})`;
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, star.size * 0.8, 0, Math.PI * 2); ctx.fill();
       }
+    } else {
+      // Background star
+      const alpha = star.brightness * nightAmount * (0.3 + svt * 0.2);
+      ctx.fillStyle = `rgba(200, 210, 240, ${alpha})`;
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, star.size, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+
+  // Pole star — always visible, the Rivet
+  const polePos = skyToScreen(0, 0, rotation, svt);
+  const polePulse = Math.sin(state.tick * 0.01) * 0.1 + 0.9;
+  const poleUnlocked = state.knowledge.axisMundi > 0;
+  const poleAlpha = nightAmount * polePulse;
+
+  if (poleUnlocked) {
+    ctx.fillStyle = `rgba(200, 180, 255, ${poleAlpha})`;
+    ctx.beginPath(); ctx.arc(polePos.x, polePos.y, 4 + svt * 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(200, 180, 255, ${poleAlpha * 0.15})`;
+    ctx.beginPath(); ctx.arc(polePos.x, polePos.y, 15 + svt * 10, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.fillStyle = `rgba(220, 220, 240, ${poleAlpha * 0.6})`;
+    ctx.beginPath(); ctx.arc(polePos.x, polePos.y, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function renderConstellationOverlay(svt, nightAmount) {
+  const positions = state.stars._screenPositions;
+  if (!positions) return;
+
+  state.constellations.forEach(c => {
+    const alpha = svt * nightAmount;
+
+    // Draw lines between stars
+    c.lines.forEach(([a, b]) => {
+      const idxA = c.starIndices[a];
+      const idxB = c.starIndices[b];
+      const posA = positions[idxA];
+      const posB = positions[idxB];
+      if (!posA || !posB) return;
+
+      if (c.unlocked) {
+        ctx.strokeStyle = `rgba(${c.color[0]}, ${c.color[1]}, ${c.color[2]}, ${alpha * 0.4})`;
+        ctx.lineWidth = 1.5;
+      } else {
+        ctx.strokeStyle = `rgba(150, 150, 170, ${alpha * 0.1})`;
+        ctx.lineWidth = 0.5;
+      }
+      ctx.beginPath();
+      ctx.moveTo(posA.x, posA.y);
+      ctx.lineTo(posB.x, posB.y);
+      ctx.stroke();
+    });
+
+    // Constellation name label (only in sky view)
+    if (svt > 0.5 && c.starIndices.length > 0) {
+      // Find centroid
+      let cx = 0, cy = 0;
+      c.starIndices.forEach(idx => {
+        const p = positions[idx];
+        if (p) { cx += p.x; cy += p.y; }
+      });
+      cx /= c.starIndices.length;
+      cy /= c.starIndices.length;
+
+      const labelAlpha = (svt - 0.5) * 2 * nightAmount;
+
+      if (c.unlocked) {
+        // Name
+        ctx.fillStyle = `rgba(${c.color[0]}, ${c.color[1]}, ${c.color[2]}, ${labelAlpha * 0.8})`;
+        ctx.font = '12px Georgia';
+        ctx.textAlign = 'center';
+        ctx.fillText(c.name, cx, cy + 18);
+        // Subtitle
+        ctx.fillStyle = `rgba(${c.color[0]}, ${c.color[1]}, ${c.color[2]}, ${labelAlpha * 0.5})`;
+        ctx.font = '9px Georgia';
+        ctx.fillText(c.subtitle, cx, cy + 30);
+      } else {
+        // Mystery
+        ctx.fillStyle = `rgba(150, 150, 170, ${labelAlpha * 0.3})`;
+        ctx.font = '10px Georgia';
+        ctx.textAlign = 'center';
+        ctx.fillText('? ? ?', cx, cy + 18);
+      }
+      ctx.textAlign = 'left';
     }
   });
 }
