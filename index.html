@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tech Tree</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0e14;
+      color: #c8b8a0;
+      font-family: Georgia, serif;
+      overflow: hidden;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: default;
+    }
+
+    /* HUD overlay */
+    .hud {
+      position: absolute;
+      pointer-events: none;
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+    #epoch {
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      opacity: 0.5;
+    }
+    #panel-left {
+      top: 15px;
+      left: 15px;
+      opacity: 0.6;
+      line-height: 1.8;
+    }
+    #panel-right {
+      top: 15px;
+      right: 15px;
+      opacity: 0.6;
+      text-align: right;
+      line-height: 1.8;
+    }
+    #controls {
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      opacity: 0.35;
+      font-size: 10px;
+      letter-spacing: 2px;
+    }
+    #pause-overlay {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 16px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="world"></canvas>
+  <div class="hud" id="epoch">52,000 years before present</div>
+  <div class="hud" id="panel-left"></div>
+  <div class="hud" id="panel-right"></div>
+  <div class="hud" id="controls">
+    wasd scroll &middot; space pause &middot; click move &middot; e interact &middot; t tend songs &middot; r right axis &middot; b slash &amp; burn &middot; f follow herd
+  </div>
+  <div id="pause-overlay">⏸ paused</div>
+  <script src="engine.js"></script>
+</body>
+</html>
