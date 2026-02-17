@@ -942,17 +942,43 @@ function teachingPower(person) {
 }
 
 // ── Verse Integrity ─────────────────────────────────────────────────
-// A person doesn't just "know" or "not know" a verse.
-// They know it with some integrity: 0.0 (lost) to 1.0 (perfect).
-// Every season without practice or teaching, integrity drifts down.
-// Below 0.3, the verse is garbled — teaching it spreads corruption.
-// Below 0.1, it's gone.
+// A person knows a verse with some integrity: 0.0 (lost) to 1.0 (perfect).
+// Verses DO NOT DECAY in the holder. You know what you know until you die.
+// Decay is GENERATIONAL: youth absorb at less than the teacher's integrity.
+// The compounding across generations IS the drift.
+//
+// The constraint is not memory. It's SINGING TIME.
+// Each season the community performs a setlist. The setlist has limited slots.
+// Youth absorb songs from the setlist by being present (legitimate peripheral
+// participation). Songs not on the setlist are not transmitted. One generation
+// of silence = lost.
+//
+// Position on the setlist matters:
+//   Opening verse: ~95% transmission. Everyone hears this. Even the babies.
+//   Deep night verses: ~60% transmission. Youth are drowsy.
+// Blood affinity boosts absorption. Repetition across seasons helps.
 
-const DRIFT_PER_SEASON = 0.08;           // natural forgetting
-const LEARN_RATE_BASE = 0.15;            // how much a youth learns per season from one teacher
-const PRACTICE_BONUS = 0.05;             // integrity recovered by practicing
 const GARBLE_THRESHOLD = 0.3;            // below this, teaching spreads errors
 const LOST_THRESHOLD = 0.1;              // below this, verse is gone
+const LEARN_RATE_FOCUSED = 0.25;         // focused 1-on-1 apprenticeship bonus
+
+// ── The Setlist ────────────────────────────────────────────────────
+// The setlist is what the community sings each season.
+// Capacity depends on band size: more people = more fires = more songs.
+// Order matters: early songs transmit better to youth.
+
+function setlistCapacity(people) {
+  const singers = people.filter(p => ageCategory(p.age) !== 'youth').length;
+  if (singers <= 0) return 0;
+  return Math.floor(Math.log2(singers) * 2) + 1;
+}
+
+// Position factor: how well a song at position i (0-indexed) transmits to youth
+function positionFactor(position, totalSlots) {
+  if (totalSlots <= 1) return 0.90;
+  // Opening: 0.95, last slot: 0.55, linear interpolation
+  return 0.95 - (position / (totalSlots - 1)) * 0.40;
+}
 
 // ── Default State ───────────────────────────────────────────────────
 
@@ -1287,6 +1313,11 @@ function newState(ageKey = 'stone', inheritedSongs = {}, previousAges = [], unlo
     // Messages from last turn
     messages: [],
 
+    // The Setlist — what the community sings each season
+    // Order matters: position 1 transmits best to youth
+    setlist: [],                // verse IDs in performance order
+    setlistHistory: {},         // verseId → consecutive seasons on setlist (repetition bonus)
+
     // The Spirits — animal and great
     spirits: Object.fromEntries(
       Object.entries(SPIRITS).map(([key, def]) => [key, { spirit: 1.0, danger: def.baseDanger }])
@@ -1331,18 +1362,10 @@ function advanceSeason(state) {
   }
   state.people = state.people.filter(p => ageCategory(p.age) !== 'dead');
 
-  // ── Natural drift — everyone forgets a little ──
-  for (const p of state.people) {
-    for (const v of Object.keys(p.verses)) {
-      // Carved verses don't drift (the tree holds them)
-      if (state.tree.carved.includes(v)) continue;
-      p.verses[v] -= DRIFT_PER_SEASON;
-      if (p.verses[v] < LOST_THRESHOLD) {
-        msgs.push(`  ${p.name} has forgotten "${VERSES[v].name}"`);
-        delete p.verses[v];
-      }
-    }
-  }
+  // ── NO NATURAL DRIFT ──
+  // Verses don't decay in the holder. You know what you know until you die.
+  // Decay is generational: youth absorb at less than teacher's integrity.
+  // The compounding across generations IS the drift.
 
   // ── Blood drift — the heritage song on a geological timescale ──
   // Everyone's blood verses drift slowly. The dominant blood of the age drifts UP.
@@ -1352,46 +1375,169 @@ function advanceSeason(state) {
     driftBlood(p, dominantBloods);
   }
 
-  // ── Automatic teaching — elders/adults teach youth who are nearby ──
-  // Blood affinity matters: songs your blood eases are learned faster.
-  // A half-dwarf child picks up Flake Knapping like breathing.
-  // A pure human child struggles with it.
+  // ── The Setlist — what the community sings this season ──
+  // Auto-populate if empty: elders' best songs fill the setlist by default.
+  // Player can override with `setlist` command.
+  if (!state.setlist) state.setlist = [];
+  if (!state.setlistHistory) state.setlistHistory = {};
+  let capacity = setlistCapacity(state.people);
+  // Night penalty — dark without stars reduces singing time
+  if (state.nightPenalty && state.nightPenalty > 0) {
+    capacity = Math.max(1, capacity - state.nightPenalty);
+    state.nightPenalty = 0;  // resets each season
+  }
+
+  // Clean setlist: remove songs nobody knows anymore
+  state.setlist = state.setlist.filter(v =>
+    state.people.some(p => p.verses[v] && p.verses[v] >= LOST_THRESHOLD)
+  );
+
+  // Auto-fill empty slots with best-known songs not already on setlist
+  if (state.setlist.length < capacity) {
+    const allKnown = {};
+    for (const p of state.people) {
+      if (ageCategory(p.age) === 'youth') continue;
+      for (const [v, integrity] of Object.entries(p.verses)) {
+        if (integrity >= LOST_THRESHOLD) {
+          allKnown[v] = Math.max(allKnown[v] || 0, integrity);
+        }
+      }
+    }
+    const candidates = Object.entries(allKnown)
+      .filter(([v]) => !state.setlist.includes(v))
+      .sort((a, b) => b[1] - a[1]);
+    for (const [v] of candidates) {
+      if (state.setlist.length >= capacity) break;
+      state.setlist.push(v);
+    }
+  }
+
+  // Trim if over capacity (band shrank)
+  while (state.setlist.length > capacity) state.setlist.pop();
+
+  // Update repetition history
+  const newHistory = {};
+  for (const v of state.setlist) {
+    newHistory[v] = (state.setlistHistory[v] || 0) + 1;
+  }
+  state.setlistHistory = newHistory;
+
+  if (state.setlist.length > 0) {
+    msgs.push(`  The song tonight (${state.setlist.length}/${capacity} slots):`);
+    state.setlist.forEach((v, i) => {
+      const bestSinger = state.people.reduce((best, p) => {
+        const integrity = p.verses[v] || 0;
+        return integrity > (best?.verses[v] || 0) ? p : best;
+      }, null);
+      const integrity = bestSinger?.verses[v] || 0;
+      const reps = state.setlistHistory[v] || 0;
+      const repStr = reps > 1 ? ` (${reps} seasons)` : '';
+      msgs.push(`    ${i + 1}. ${VERSES[v]?.name || v} — ${bestSinger?.name || '?'} sings at ${Math.round(integrity * 100)}%${repStr}`);
+    });
+  }
+
+  // ── Absorption — youth learn from the setlist by being present ──
+  // This IS legitimate peripheral participation. The youth sitting at the edge
+  // of the firelight hears the song 200 times before they ever sing it.
+  // They know it before they know they know it.
   const youth = state.people.filter(p => ageCategory(p.age) === 'youth');
-  const teachers = state.people.filter(p => teachingPower(p) > 0);
 
   for (const student of youth) {
-    const eased = bloodEases(student); // { songId: bloodLevel }
+    const eased = bloodEases(student);
 
-    for (const teacher of teachers) {
-      for (const v of Object.keys(teacher.verses)) {
-        if (teacher.verses[v] < LOST_THRESHOLD) continue;
+    for (let i = 0; i < state.setlist.length; i++) {
+      const v = state.setlist[i];
+      const verse = VERSES[v];
+      if (!verse) continue;
 
-        // Check if student has prereqs
-        const verse = VERSES[v];
-        if (!verse) continue;
-        const hasPrereqs = verse.prereqs.every(pr =>
-          student.verses[pr] && student.verses[pr] >= GARBLE_THRESHOLD
+      // Check prereqs — can't absorb what you have no foundation for
+      const hasPrereqs = verse.prereqs.every(pr =>
+        student.verses[pr] && student.verses[pr] >= GARBLE_THRESHOLD
+      );
+      if (!hasPrereqs && verse.prereqs.length > 0) continue;
+
+      // Find best teacher for this song
+      let bestTeacherIntegrity = 0;
+      for (const p of state.people) {
+        if (ageCategory(p.age) === 'youth') continue;
+        if (p.verses[v] && p.verses[v] > bestTeacherIntegrity) {
+          bestTeacherIntegrity = p.verses[v];
+        }
+      }
+      if (bestTeacherIntegrity < LOST_THRESHOLD) continue;
+
+      // Position factor: opening verse transmits best
+      const posFactor = positionFactor(i, state.setlist.length);
+
+      // Blood affinity: songs your blood eases, you absorb faster
+      const bloodBonus = eased[v] || 0;
+
+      // Repetition bonus: consecutive seasons on setlist help
+      const reps = state.setlistHistory[v] || 1;
+      const repBonus = Math.min(0.1, (reps - 1) * 0.02); // +2% per extra season, max +10%
+
+      // Absorption: how much of the teacher's version the youth gets
+      const absorption = bestTeacherIntegrity * (posFactor + repBonus) * (1 + bloodBonus * 0.5);
+      const absorbed = Math.min(bestTeacherIntegrity, absorption); // can't exceed teacher
+
+      const current = student.verses[v] || 0;
+      if (absorbed > current) {
+        // Youth absorbs a little more each season, approaching absorbed level
+        // Not instant — takes a few seasons of listening to fully absorb
+        const gain = (absorbed - current) * 0.3;  // 30% of remaining gap per season
+        student.verses[v] = current + gain;
+      }
+    }
+  }
+
+  // ── Adjacency discovery — mixed songs emerge from the arrangement ──
+  // When two prerequisite songs are adjacent on the setlist, the combination
+  // can be discovered. This is how mixed songs happen — not by being taught,
+  // but by singing one right after the other and hearing what's between them.
+  for (let i = 0; i < state.setlist.length - 1; i++) {
+    const v1 = state.setlist[i];
+    const v2 = state.setlist[i + 1];
+    // Check all mixed/ash songs to see if this pair is a prereq combo
+    for (const [songId, verse] of Object.entries(VERSES)) {
+      if (verse.tradition !== 'mixed' && verse.tradition !== 'ash') continue;
+      if (verse.prereqs.length < 2) continue;
+      // Do these two adjacent songs satisfy (at least) two prereqs?
+      const prereqSet = new Set(verse.prereqs);
+      if (prereqSet.has(v1) && prereqSet.has(v2)) {
+        // Check that someone knows BOTH well enough
+        const hasBoth = state.people.some(p =>
+          ageCategory(p.age) !== 'youth' &&
+          p.verses[v1] && p.verses[v1] >= GARBLE_THRESHOLD &&
+          p.verses[v2] && p.verses[v2] >= GARBLE_THRESHOLD
         );
-        if (!hasPrereqs && verse.prereqs.length > 0) continue;
-
-        const current = student.verses[v] || 0;
-        if (current >= teacher.verses[v]) continue;
-
-        let gain = LEARN_RATE_BASE * teachingPower(teacher);
-
-        // Blood affinity bonus — songs your blood eases, you learn faster
-        const bloodBonus = eased[v] || 0;
-        gain *= (1 + bloodBonus); // up to 2x for pure blood
-
-        // If teacher's version is garbled, student learns the garbled version
-        if (teacher.verses[v] < GARBLE_THRESHOLD) {
-          gain *= 0.5;
-          if (!student.verses[v] || student.verses[v] < 0.05) {
-            msgs.push(`  ${teacher.name} teaches ${student.name} a garbled "${VERSES[v].name}"`);
+        if (!hasBoth) continue;
+        // Check all prereqs are met somewhere in the band
+        const allPrereqs = verse.prereqs.every(pr =>
+          state.people.some(p => p.verses[pr] && p.verses[pr] >= GARBLE_THRESHOLD)
+        );
+        if (!allPrereqs) continue;
+        // Check no one already knows it well
+        const alreadyKnown = state.people.some(p => p.verses[songId] && p.verses[songId] >= GARBLE_THRESHOLD);
+        if (alreadyKnown) continue;
+        // Discovery chance — higher with repetition
+        const reps = Math.min(state.setlistHistory[v1] || 0, state.setlistHistory[v2] || 0);
+        const chance = 0.05 + reps * 0.03; // 5% base + 3% per season both are on setlist
+        if (Math.random() < chance) {
+          // The singer who knows both best discovers the mixed song
+          let discoverer = null;
+          let bestScore = 0;
+          for (const p of state.people) {
+            if (ageCategory(p.age) === 'youth') continue;
+            const score = (p.verses[v1] || 0) + (p.verses[v2] || 0);
+            if (score > bestScore) { bestScore = score; discoverer = p; }
           }
-          student.verses[v] = Math.min(teacher.verses[v], (student.verses[v] || 0) + gain);
-        } else {
-          student.verses[v] = Math.min(1.0, (student.verses[v] || 0) + gain);
+          if (discoverer) {
+            const integrity = Math.min(discoverer.verses[v1] || 0, discoverer.verses[v2] || 0) * 0.7;
+            discoverer.verses[songId] = integrity;
+            msgs.push(`  ★ ${discoverer.name} sings "${VERSES[v1]?.name}" into "${VERSES[v2]?.name}" and hears something new:`);
+            msgs.push(`    "${verse.name}" emerges — ${verse.desc}`);
+            msgs.push(`    (${Math.round(integrity * 100)}% integrity — it's new, still forming)`);
+          }
         }
       }
     }
@@ -1646,19 +1792,12 @@ function advanceSeason(state) {
           }
           msgs.push(`  All songs strengthen under the stars. (+${Math.round((spiritDef.songBoost || 0.04) * 100)}%)`);
         } else {
-          // No stars: night is just cold and dangerous. Songs drift faster.
+          // No stars: night is just cold and dangerous. No singing in the dark.
+          // The setlist is shorter next season — the community can't gather to sing.
           msgs.push(`  !! The long dark. No stars to sing by. ${spiritDef.attackFoodLoss} food lost to the cold. !!`);
-          const extraDrift = DRIFT_PER_SEASON * 0.5;
-          for (const p of state.people) {
-            for (const v of Object.keys(p.verses)) {
-              if (state.tree.carved.includes(v)) continue;
-              p.verses[v] -= extraDrift;
-              if (p.verses[v] < LOST_THRESHOLD) {
-                msgs.push(`  ${p.name} forgets "${VERSES[v]?.name}" in the darkness.`);
-                delete p.verses[v];
-              }
-            }
-          }
+          msgs.push(`  Without stars, the community can't gather. Fewer songs next season.`);
+          // Mark for next season's setlist reduction
+          state.nightPenalty = (state.nightPenalty || 0) + 2; // lose 2 setlist slots next season
         }
         // Night kills through exposure
         if (ss.spirit < 0.3 && Math.random() < spiritDef.killChance) {
@@ -1799,25 +1938,15 @@ function advanceSeason(state) {
   // ── The Dog — wolf spirit in the camp ──
   // When someone knows the Dog Song, a wolf-spirit perimeter forms.
   // Anyone with old blood (cave_blood, stone_blood, deep_blood) feels it.
-  // The allergy is constant. They can't sleep. Verses drift faster.
-  // Eventually they leave. The dwarves go underground. The trolls turn to stone.
+  // The dog disrupts the singing circle — old-blood people can't join in.
+  // They can't teach. They can't sing. Eventually they leave.
   const bandKnowsDog = state.people.some(p => p.verses['dog'] && p.verses['dog'] >= GARBLE_THRESHOLD);
   if (bandKnowsDog) {
     for (const p of state.people) {
       const wolfAllergy = allergyStrength(p, 'wolf');
       if (wolfAllergy >= BLOOD_ALLERGY_THRESHOLD) {
-        // The dog is always there. The old blood can't rest.
-        // Extra verse drift proportional to allergy strength
-        const extraDrift = DRIFT_PER_SEASON * wolfAllergy * 0.5;
-        for (const v of Object.keys(p.verses)) {
-          if (state.tree.carved.includes(v)) continue;
-          p.verses[v] -= extraDrift;
-          if (p.verses[v] < LOST_THRESHOLD) {
-            msgs.push(`  ${p.name} can't concentrate — the dog keeps them awake. "${VERSES[v]?.name}" fades.`);
-            delete p.verses[v];
-          }
-        }
         // Chance they leave each season — higher allergy = more likely
+        // The dog is always there. The old blood can't rest.
         if (Math.random() < wolfAllergy * 0.08) {
           const label = PEOPLES[identifyPeople(p, state.ageKey)]?.name || 'stranger';
           const knownVerses = Object.keys(p.verses).filter(v => p.verses[v] >= LOST_THRESHOLD);
@@ -1912,21 +2041,73 @@ function advanceSeason(state) {
 
 const ACTIONS = {
 
-  // Sing = practice a verse, recovering integrity
-  sing(state, verseId) {
-    if (!VERSES[verseId]) return [`Unknown verse: ${verseId}. Use "node song.js verses" to see all.`];
-    const singers = state.people.filter(p =>
-      p.verses[verseId] && p.verses[verseId] >= LOST_THRESHOLD && ageCategory(p.age) !== 'youth'
-    );
-    if (singers.length === 0) return ['No one in the band can sing that verse.'];
-
+  // Setlist = arrange what the community sings each season
+  // Usage: setlist [verse1] [verse2] ...
+  // Order matters: position 1 transmits best to youth.
+  // Anything not listed drops off. Auto-fills remaining capacity.
+  setlist(state, ...verseIds) {
+    if (!state.setlist) state.setlist = [];
+    const cap = setlistCapacity(state.people);
     const msgs = [];
-    for (const s of singers) {
-      const old = s.verses[verseId];
-      s.verses[verseId] = Math.min(1.0, old + PRACTICE_BONUS * singers.length);
-      msgs.push(`  ${s.name} sings "${VERSES[verseId].name}" — integrity: ${(old * 100).toFixed(0)}% → ${(s.verses[verseId] * 100).toFixed(0)}%`);
+
+    if (verseIds.length === 0 || !verseIds[0]) {
+      // Show current setlist
+      msgs.push(`  THE SETLIST (${state.setlist.length}/${cap} slots):`);
+      if (state.setlist.length === 0) {
+        msgs.push('    (empty — songs will auto-fill next season)');
+      } else {
+        state.setlist.forEach((v, i) => {
+          const bestSinger = state.people.reduce((best, p) =>
+            (p.verses[v] || 0) > (best?.verses[v] || 0) ? p : best, null);
+          const integrity = bestSinger?.verses[v] || 0;
+          const posFac = positionFactor(i, state.setlist.length);
+          const reps = state.setlistHistory?.[v] || 0;
+          const repStr = reps > 1 ? ` [${reps} seasons]` : '';
+          msgs.push(`    ${i + 1}. ${VERSES[v]?.name || v} — ${bestSinger?.name || '?'} at ${Math.round(integrity * 100)}%  (transmission: ${Math.round(posFac * 100)}%)${repStr}`);
+        });
+      }
+      msgs.push(`  Capacity: ${cap} (${state.people.filter(p => ageCategory(p.age) !== 'youth').length} singers)`);
+      return msgs;
+    }
+
+    // Set new order
+    const newSetlist = [];
+    for (const v of verseIds) {
+      if (!VERSES[v]) { msgs.push(`  Unknown verse: ${v}`); continue; }
+      // Someone must know it
+      if (!state.people.some(p => p.verses[v] && p.verses[v] >= LOST_THRESHOLD)) {
+        msgs.push(`  No one knows "${VERSES[v].name}" — can't add to setlist.`);
+        continue;
+      }
+      if (newSetlist.includes(v)) continue; // no dupes
+      if (newSetlist.length >= cap) {
+        msgs.push(`  Setlist full (${cap} slots). "${VERSES[v].name}" dropped.`);
+        break;
+      }
+      newSetlist.push(v);
+    }
+    state.setlist = newSetlist;
+    msgs.push(`  Setlist arranged (${newSetlist.length}/${cap}):`);
+    newSetlist.forEach((v, i) => {
+      const posFac = positionFactor(i, newSetlist.length);
+      msgs.push(`    ${i + 1}. ${VERSES[v]?.name || v} (transmission: ${Math.round(posFac * 100)}%)`);
+    });
+    if (newSetlist.length < cap) {
+      msgs.push(`  ${cap - newSetlist.length} empty slots — will auto-fill next season.`);
     }
     return msgs;
+  },
+
+  // Prioritize = move a verse to position 1 on the setlist
+  prioritize(state, verseId) {
+    if (!verseId || !VERSES[verseId]) return [`Unknown verse: ${verseId}`];
+    if (!state.setlist) state.setlist = [];
+    const idx = state.setlist.indexOf(verseId);
+    if (idx >= 0) state.setlist.splice(idx, 1);
+    state.setlist.unshift(verseId);
+    const cap = setlistCapacity(state.people);
+    while (state.setlist.length > cap) state.setlist.pop();
+    return [`  "${VERSES[verseId].name}" moved to opening position.`];
   },
 
   // Carve = fix a verse on the Tree (permanent, but tree grows)
@@ -2102,7 +2283,11 @@ const ACTIONS = {
     return msgs;
   },
 
-  // Teach = have a specific elder teach a specific youth a specific verse
+  // Teach = focused apprenticeship. One elder, one student, one song.
+  // This is the deliberate transmission outside the communal singing.
+  // The student gets a direct transfer — more than peripheral absorption.
+  // In the new model, this is how you push a specific song above what
+  // the setlist position would give. The apprentice sits with the master.
   teach(state, teacherName, studentName, verseId) {
     const teacher = state.people.find(p => p.name.toLowerCase() === teacherName?.toLowerCase());
     const student = state.people.find(p => p.name.toLowerCase() === studentName?.toLowerCase());
@@ -2122,14 +2307,13 @@ const ACTIONS = {
       return [`${student.name} lacks the prerequisite songs: ${verse.prereqs.map(p => VERSES[p].name).join(', ')}`];
     }
 
-    let gain = LEARN_RATE_BASE * teachingPower(teacher) * 2; // focused teaching = double rate
-    // Blood affinity bonus
+    // Focused teaching: student gets a chunk of the teacher's version directly
     const eased = bloodEases(student);
     const bloodBonus = eased[verseId] || 0;
-    gain *= (1 + bloodBonus);
+    const gain = LEARN_RATE_FOCUSED * teachingPower(teacher) * (1 + bloodBonus);
     const old = student.verses[verseId] || 0;
     const garbled = teacher.verses[verseId] < GARBLE_THRESHOLD;
-    const cap = garbled ? teacher.verses[verseId] : 1.0;
+    const cap = garbled ? teacher.verses[verseId] : teacher.verses[verseId]; // can't exceed teacher
     student.verses[verseId] = Math.min(cap, old + gain);
 
     const msgs = [];
@@ -2174,6 +2358,22 @@ function printStatus(state) {
   } else {
     console.log();
     console.log(`  THE TREE — a stump. (or not yet grown)`);
+  }
+
+  // The Setlist
+  if (state.setlist && state.setlist.length > 0) {
+    const cap = setlistCapacity(state.people);
+    console.log();
+    console.log(`  THE SETLIST (${state.setlist.length}/${cap}):`);
+    state.setlist.forEach((v, i) => {
+      const bestSinger = state.people.reduce((best, p) =>
+        (p.verses[v] || 0) > (best?.verses[v] || 0) ? p : best, null);
+      const integrity = bestSinger?.verses[v] || 0;
+      const posFac = positionFactor(i, state.setlist.length);
+      const reps = state.setlistHistory?.[v] || 0;
+      const repStr = reps > 1 ? ` [${reps}]` : '';
+      console.log(`    ${i + 1}. ${(VERSES[v]?.name || v).padEnd(22)} ${bestSinger?.name?.padEnd(12) || '?'.padEnd(12)} ${Math.round(integrity * 100)}%  →${Math.round(posFac * 100)}%${repStr}`);
+    });
   }
 
   // The People
@@ -2307,8 +2507,10 @@ function printHelp() {
   node song.js status              Show current state
   node song.js verses              List all known verses
 
-  node song.js sing <verse>        Practice a verse (slows forgetting)
-  node song.js teach <elder> <youth> <verse>   Focused teaching session
+  node song.js setlist                          Show current setlist
+  node song.js setlist <v1> <v2> <v3> ...       Arrange the setlist (order matters!)
+  node song.js prioritize <verse>               Move a verse to opening position
+  node song.js teach <elder> <student> <verse>  Focused apprenticeship (1-on-1)
   node song.js carve <verse>       Carve a verse on the Tree (needs Carving Song)
   node song.js fell                Fell the Tree (needs Blade Singing)
   node song.js gather              Gather fragments after a felling
@@ -2321,13 +2523,20 @@ function printHelp() {
 
   node song.js reset               Start over from the beginning
 
+  The setlist is what the community sings each season. Order matters.
+  The opening verse transmits best to youth. Deep night verses fade.
+  Youth learn by being present — legitimate peripheral participation.
+  Songs not on the setlist are not transmitted. One generation of silence = lost.
+  Verses don't decay in the singer. Decay is generational.
+  The constraint is singing time, not memory.
+
   Time is not a line. Ages are places the song can take you.
   Carve the right songs and bridges open — forward, backward, sideways.
+  Put two prerequisite songs adjacent on the setlist — mixed songs emerge.
   The tree grows when you carve. It blocks the sun. You must fell it.
-  The songs scatter. New things grow in the ash. The bears remember.
   The bears have their own age. You have to earn it.
   The last age is the Tech Tree. The complexity itself kills you.
-  Sing.
+  Arrange.
   `);
 }
 
@@ -2380,9 +2589,14 @@ function main() {
       printHelp();
       break;
 
-    case 'sing':
-      if (!args[1]) { console.log('Usage: node song.js sing <verse_id>'); break; }
-      for (const m of ACTIONS.sing(state, args[1])) console.log(m);
+    case 'setlist':
+      for (const m of ACTIONS.setlist(state, ...args.slice(1))) console.log(m);
+      fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+      break;
+
+    case 'prioritize':
+      if (!args[1]) { console.log('Usage: node song.js prioritize <verse_id>'); break; }
+      for (const m of ACTIONS.prioritize(state, args[1])) console.log(m);
       fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
       break;
 
