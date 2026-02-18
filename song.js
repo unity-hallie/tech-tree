@@ -147,8 +147,8 @@ const VERSES = {
                 desc: 'How to walk with the reindeer' },
   tree_song:  { tradition: 'human', people: 'human', name: 'The Carving Song', prereqs: ['elder_song', 'blade'], difficulty: 3,
                 desc: 'How to fix a song in wood so it outlasts the singer' },
-  ash_song:   { tradition: 'human', people: 'human', name: 'The Ash Song', prereqs: ['root', 'spark'], difficulty: 3,
-                desc: 'How to burn the forest so it feeds you — and leave the birch for the birds' },
+  // ash_song is now a shadow verse — emerges when root is sung without track
+  // The first agriculture is the shadow of nomadism.
   grain:      { tradition: 'human', people: 'human', name: 'The Grain Song', prereqs: ['ash_song', 'seasons'], difficulty: 4,
                 desc: 'How to make the earth remember what to grow' },
   ore:        { tradition: 'human', people: 'human', name: 'Ore Reading', prereqs: ['blade', 'spark'], difficulty: 3,
@@ -254,6 +254,11 @@ Object.assign(VERSES, ASH_VERSES);
 // shadow_rate: how fast the shadow accumulates (per season the condition holds)
 
 const SHADOW_VERSES = {
+  ash_song:   { tradition: 'shadow', people: 'human', name: 'The Ash Song',
+                desc: 'Root without track. You know where things grow but you\'ve stopped following them. So you burn the forest and make them grow HERE. The first agriculture is the shadow of nomadism.',
+                shadow_of: 'root', shadow_when: 'track', shadow_rate: 0.12,
+                redeems_with: 'herd', redeems_into: 'rotation',
+                prereqs: [], difficulty: 3 },
   wall:       { tradition: 'shadow', people: 'human', name: 'The Wall Song',
                 desc: 'Grain without ash. Planting without understanding soil. What grows is ownership.',
                 shadow_of: 'grain', shadow_when: 'ash_song', shadow_rate: 0.15,
@@ -326,6 +331,9 @@ const REDEMPTION_VERSES = {
   restoration: { tradition: 'redeemed', people: 'mixed', name: 'The Restoration Song',
                  desc: 'Cancellation meets the elder. Erasure meets living memory. What was defunded grows back from the root.',
                  prereqs: ['cancel', 'elder_song'], difficulty: 3 },
+  rotation:    { tradition: 'redeemed', people: 'mixed', name: 'The Rotation Song',
+                 desc: 'Ash meets herd. Slash-and-burn meets migration. You stop burning new ground. You move the CROPS instead of moving yourself. The nomadic instinct becomes crop rotation.',
+                 prereqs: ['ash_song', 'herd'], difficulty: 4 },
 };
 
 Object.assign(VERSES, REDEMPTION_VERSES);
