@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// THE SONG — a game about oral tradition, the world tree, and the price of knowledge
+// IN THE SHADOW OF THE TECH TREE — a game about oral tradition, deep time, and what grows in the dark
 // One execution = one season. State persists in state.json.
 // Usage: node song.js [action] [args...]
 
@@ -238,75 +238,76 @@ const ASH_VERSES = {
 Object.assign(VERSES, ASH_VERSES);
 
 // ── The Shadows ──────────────────────────────────────────────────────
-// Every song has a shadow: what the song becomes when sung without its roots.
-// Shadow songs emerge when a light song is on the setlist but its foundation
-// is ABSENT. The words are the same. The meaning is different.
+// Any verse can cast a shadow. Any shadow can be redeemed. Any redemption
+// can cast a shadow again. There is no separate category. A verse with
+// shadow_of is a shadow. A verse with redeems_into is redeemable.
+// They're all just verses.
 //
 // The Grain Song sung without the Ash Song isn't a broken grain song.
-// It's a DIFFERENT song. Agriculture without ecology. Farming without soil.
-// That different song is the Wall Song. "This is mine."
+// It's a DIFFERENT song — the Wall Song. Agriculture without ecology.
+// The Wall Song + Ash Song → Irrigation. The Irrigation Song without
+// root knowledge → Salination. Salt + root → Watershed. The spiral
+// doesn't end. Every redemption can fall. Every fall can be redeemed.
 //
-// Shadows accumulate over seasons. When the shadow is full, someone in the
-// band just... knows it. The shadow crystallized. The yin emerged from the yang.
-//
-// shadow_of:   the light song that casts this shadow
-// shadow_when: the prereq of the light song that must be ABSENT
-// shadow_rate: how fast the shadow accumulates (per season the condition holds)
+// shadow_of:     the song that casts this shadow (when sung without shadow_when)
+// shadow_when:   the absent foundation
+// shadow_rate:   accumulation per season
+// redeems_with:  the root that redeems this shadow
+// redeems_into:  the redemption verse that emerges
 
-const SHADOW_VERSES = {
-  ash_song:   { tradition: 'shadow', people: 'human', name: 'The Ash Song',
-                desc: 'Root without track. You know where things grow but you\'ve stopped following them. So you burn the forest and make them grow HERE. The first agriculture is the shadow of nomadism.',
-                shadow_of: 'root', shadow_when: 'track', shadow_rate: 0.12,
-                redeems_with: 'herd', redeems_into: 'rotation',
-                prereqs: [], difficulty: 3 },
-  wall:       { tradition: 'shadow', people: 'human', name: 'The Wall Song',
-                desc: 'Grain without ash. Planting without understanding soil. What grows is ownership.',
-                shadow_of: 'grain', shadow_when: 'ash_song', shadow_rate: 0.15,
-                redeems_with: 'ash_song', redeems_into: 'irrigation',
-                prereqs: [], difficulty: 3 },
-  temple:     { tradition: 'shadow', people: 'human', name: 'The Temple Song',
-                desc: 'Walls without burial. Enclosure without death-knowledge. The house for songs becomes a house for power.',
-                shadow_of: 'wall', shadow_when: 'burial', shadow_rate: 0.12,
-                redeems_with: 'burial', redeems_into: 'sanctuary',
-                prereqs: [], difficulty: 4 },
-  empire:     { tradition: 'shadow', people: 'human', name: 'The Empire Song',
-                desc: 'Writing without runes. Accounting without ceremony. The ledger becomes the law.',
-                shadow_of: 'writing', shadow_when: 'rune', shadow_rate: 0.08,
-                redeems_with: 'rune', redeems_into: 'law',
-                prereqs: [], difficulty: 5 },
-  ban:        { tradition: 'shadow', people: 'human', name: 'The Ban',
-                desc: 'The book without the elder. Text without living memory. The dead song forbids the living one.',
-                shadow_of: 'book', shadow_when: 'elder_song', shadow_rate: 0.15,
-                redeems_with: 'elder_song', redeems_into: 'archive',
-                prereqs: [], difficulty: 2 },
-  algorithm:  { tradition: 'shadow', people: 'human', name: 'The Algorithm',
-                desc: 'The ledger without the grain. Counting without what you count. The pattern eats the meaning.',
-                shadow_of: 'ledger', shadow_when: 'grain', shadow_rate: 0.10,
-                redeems_with: 'grain', redeems_into: 'model',
-                prereqs: [], difficulty: 3 },
-  extraction: { tradition: 'shadow', people: 'human', name: 'The Extraction Song',
-                desc: 'Ore without root. Metal without earth-knowledge. You take from the ground without knowing what you take.',
-                shadow_of: 'ore', shadow_when: 'root', shadow_rate: 0.10,
-                redeems_with: 'root', redeems_into: 'stewardship',
-                prereqs: [], difficulty: 3 },
-  platform:   { tradition: 'shadow', people: 'human', name: 'The Platform',
-                desc: 'The algorithm without the book. Optimization without knowledge. Every song becomes content. Every singer becomes a user.',
-                shadow_of: 'algorithm', shadow_when: 'book', shadow_rate: 0.10,
-                redeems_with: 'book', redeems_into: 'commons',
-                prereqs: [], difficulty: 4 },
-  cancel:     { tradition: 'shadow', people: 'human', name: 'The Cancellation',
-                desc: 'The ban without the book. Erasure without record. How a revival dies in committee. How a language project gets defunded.',
-                shadow_of: 'ban', shadow_when: 'book', shadow_rate: 0.15,
-                redeems_with: 'elder_song', redeems_into: 'restoration',
-                prereqs: [], difficulty: 1 },
-};
+// ── Shadow verses ──
+// A verse with shadow_of is a shadow. It emerges from absence, not prereqs.
+// A verse with redeems_into is redeemable. Shadow + its missing root = third thing.
+// They're all just verses.
 
-// ── Redemption Verses ─────────────────────────────────────────────────
-// When shadow meets its missing root on the setlist, something new emerges.
-// Not the original light song. Not the shadow. A third thing.
-// The irrigation canal is neither the wall nor the ash. It's what happens
-// when ownership meets ecology. When you bring the root back.
-const REDEMPTION_VERSES = {
+Object.assign(VERSES, {
+  ash_song:    { tradition: 'shadow', people: 'human', name: 'The Ash Song',
+                 desc: 'Root without track. You know where things grow but you\'ve stopped following them. So you burn the forest and make them grow HERE. The first agriculture is the shadow of nomadism.',
+                 shadow_of: 'root', shadow_when: 'track', shadow_rate: 0.12,
+                 redeems_with: 'herd', redeems_into: 'rotation',
+                 prereqs: [], difficulty: 3 },
+  wall:        { tradition: 'shadow', people: 'human', name: 'The Wall Song',
+                 desc: 'Grain without ash. Planting without understanding soil. What grows is ownership.',
+                 shadow_of: 'grain', shadow_when: 'ash_song', shadow_rate: 0.15,
+                 redeems_with: 'ash_song', redeems_into: 'irrigation',
+                 prereqs: [], difficulty: 3 },
+  temple:      { tradition: 'shadow', people: 'human', name: 'The Temple Song',
+                 desc: 'Walls without burial. Enclosure without death-knowledge. The house for songs becomes a house for power.',
+                 shadow_of: 'wall', shadow_when: 'burial', shadow_rate: 0.12,
+                 redeems_with: 'burial', redeems_into: 'sanctuary',
+                 prereqs: [], difficulty: 4 },
+  empire:      { tradition: 'shadow', people: 'human', name: 'The Empire Song',
+                 desc: 'Writing without runes. Accounting without ceremony. The ledger becomes the law.',
+                 shadow_of: 'writing', shadow_when: 'rune', shadow_rate: 0.08,
+                 redeems_with: 'rune', redeems_into: 'law',
+                 prereqs: [], difficulty: 5 },
+  ban:         { tradition: 'shadow', people: 'human', name: 'The Ban',
+                 desc: 'The book without the elder. Text without living memory. The dead song forbids the living one.',
+                 shadow_of: 'book', shadow_when: 'elder_song', shadow_rate: 0.15,
+                 redeems_with: 'elder_song', redeems_into: 'archive',
+                 prereqs: [], difficulty: 2 },
+  algorithm:   { tradition: 'shadow', people: 'human', name: 'The Algorithm',
+                 desc: 'The ledger without the grain. Counting without what you count. The pattern eats the meaning.',
+                 shadow_of: 'ledger', shadow_when: 'grain', shadow_rate: 0.10,
+                 redeems_with: 'grain', redeems_into: 'model',
+                 prereqs: [], difficulty: 3 },
+  extraction:  { tradition: 'shadow', people: 'human', name: 'The Extraction Song',
+                 desc: 'Ore without root. Metal without earth-knowledge. You take from the ground without knowing what you take.',
+                 shadow_of: 'ore', shadow_when: 'root', shadow_rate: 0.10,
+                 redeems_with: 'root', redeems_into: 'stewardship',
+                 prereqs: [], difficulty: 3 },
+  platform:    { tradition: 'shadow', people: 'human', name: 'The Platform',
+                 desc: 'The algorithm without the book. Optimization without knowledge. Every song becomes content. Every singer becomes a user.',
+                 shadow_of: 'algorithm', shadow_when: 'book', shadow_rate: 0.10,
+                 redeems_with: 'book', redeems_into: 'commons',
+                 prereqs: [], difficulty: 4 },
+  cancel:      { tradition: 'shadow', people: 'human', name: 'The Cancellation',
+                 desc: 'The ban without the book. Erasure without record. How a revival dies in committee. How a language project gets defunded.',
+                 shadow_of: 'ban', shadow_when: 'book', shadow_rate: 0.15,
+                 redeems_with: 'elder_song', redeems_into: 'restoration',
+                 prereqs: [], difficulty: 1 },
+  // ── Redemptions: shadow meets its missing root ──
+  // Redemptions are just verses. They cast shadows too. The spiral doesn't end.
   irrigation:  { tradition: 'redeemed', people: 'mixed', name: 'The Irrigation Song',
                  desc: 'Wall meets ash. Ownership meets ecology. The canal carries water to where you chose to plant. The wall becomes a channel.',
                  prereqs: ['wall', 'ash_song'], difficulty: 4 },
@@ -334,12 +335,40 @@ const REDEMPTION_VERSES = {
   rotation:    { tradition: 'redeemed', people: 'mixed', name: 'The Rotation Song',
                  desc: 'Ash meets herd. Slash-and-burn meets migration. You stop burning new ground. You move the CROPS instead of moving yourself. The nomadic instinct becomes crop rotation.',
                  prereqs: ['ash_song', 'herd'], difficulty: 4 },
-};
-
-Object.assign(VERSES, REDEMPTION_VERSES);
-
-// Merge shadow verses into VERSES
-Object.assign(VERSES, SHADOW_VERSES);
+  // ── Shadows of redemptions: the spiral continues ──
+  // Irrigation without root knowledge → salination. The Aral Sea.
+  // Sanctuary without living elders → monument. A museum that doesn't teach.
+  // Law without living voice → decree. Legislation without consent.
+  salination:  { tradition: 'shadow', people: 'human', name: 'The Salt Song',
+                 desc: 'Irrigation without root. You moved the water but forgot where it came from. The soil whitens. The canal becomes a scar.',
+                 shadow_of: 'irrigation', shadow_when: 'root', shadow_rate: 0.08,
+                 redeems_with: 'root', redeems_into: 'watershed',
+                 prereqs: [], difficulty: 4 },
+  monument:    { tradition: 'shadow', people: 'human', name: 'The Monument Song',
+                 desc: 'Sanctuary without the elder. A place that preserves but doesn\'t teach. The dead under glass.',
+                 shadow_of: 'sanctuary', shadow_when: 'elder_song', shadow_rate: 0.08,
+                 redeems_with: 'elder_song', redeems_into: 'living_temple',
+                 prereqs: [], difficulty: 4 },
+  decree:      { tradition: 'shadow', people: 'human', name: 'The Decree',
+                 desc: 'Law without living voice. The covenant becomes a command again. Signed but not sung.',
+                 shadow_of: 'law', shadow_when: 'elder_song', shadow_rate: 0.06,
+                 redeems_with: 'elder_song', redeems_into: 'custom',
+                 prereqs: [], difficulty: 5 },
+  monoculture: { tradition: 'shadow', people: 'human', name: 'The Monoculture',
+                 desc: 'Rotation without track. You move the crops but always to the same place. The field forgets how to be anything else.',
+                 shadow_of: 'rotation', shadow_when: 'track', shadow_rate: 0.08,
+                 prereqs: [], difficulty: 3 },
+  // ── Second-order redemptions ──
+  watershed:   { tradition: 'redeemed', people: 'mixed', name: 'The Watershed Song',
+                 desc: 'Salt meets root. The damaged land meets someone who still reads the water table. The canal follows the hillside again.',
+                 prereqs: ['salination', 'root'], difficulty: 5 },
+  living_temple: { tradition: 'redeemed', people: 'mixed', name: 'The Living Temple',
+                 desc: 'Monument meets elder. The museum learns to teach again. The dead speak through the living.',
+                 prereqs: ['monument', 'elder_song'], difficulty: 5 },
+  custom:      { tradition: 'redeemed', people: 'mixed', name: 'The Custom Song',
+                 desc: 'Decree meets living voice. The written law bows to the sung one. What was legislated becomes practiced.',
+                 prereqs: ['decree', 'elder_song'], difficulty: 5 },
+});
 
 // ── The Spirits ─────────────────────────────────────────────────────
 // Spirits are forces of nature that appear to be wills.
@@ -1697,7 +1726,8 @@ function advanceSeason(state) {
   // and its required foundation is ABSENT (not on setlist, not carved).
   // If so, the shadow accumulates. When it hits 1.0, the shadow emerges.
   if (!state.shadows) state.shadows = {};
-  for (const [shadowId, shadowDef] of Object.entries(SHADOW_VERSES)) {
+  for (const [shadowId, shadowDef] of Object.entries(VERSES)) {
+    if (!shadowDef.shadow_of) continue; // not a shadow
     // Skip if someone already knows this shadow
     if (state.people.some(p => p.verses[shadowId] && p.verses[shadowId] >= GARBLE_THRESHOLD)) continue;
     const lightOnSetlist = state.setlist.includes(shadowDef.shadow_of);
@@ -1739,7 +1769,7 @@ function advanceSeason(state) {
   // ── Redemption discovery — shadow meets its missing root ──
   // When a shadow verse and its redeems_with root are BOTH on the setlist,
   // the redemption verse can emerge. Like adjacency discovery, but for yin-yang.
-  for (const [shadowId, shadowDef] of Object.entries(SHADOW_VERSES)) {
+  for (const [shadowId, shadowDef] of Object.entries(VERSES)) {
     if (!shadowDef.redeems_with || !shadowDef.redeems_into) continue;
     const redemptionId = shadowDef.redeems_into;
     // Skip if someone already knows the redemption
@@ -2674,7 +2704,7 @@ function printStatus(state) {
   console.log();
   console.log(`═══════════════════════════════════════════════════`);
   const ageName = state.ageName || AGES[state.ageKey || 'stone']?.name || 'Unknown Age';
-  console.log(`  THE SONG — ${ageName}`);
+  console.log(`  IN THE SHADOW OF THE TECH TREE — ${ageName}`);
   console.log(`  ${seasonName}, Year ${state.year} (${state.yearsBP} BP)`);
   const spiritStr = (s) => s > 0.7 ? 'peace' : s > 0.4 ? 'uneasy' : s > 0.2 ? 'angry' : 'RAGE';
   const spirits = state.spirits || {};
@@ -2736,8 +2766,8 @@ function printStatus(state) {
       console.log();
       console.log(`  SHADOWS:`);
       for (const [id, progress] of activeShadows) {
-        const sv = SHADOW_VERSES[id];
-        if (!sv) continue;
+        const sv = VERSES[id];
+        if (!sv || !sv.shadow_of) continue;
         const bar = '▓'.repeat(Math.round(progress * 10)) + '░'.repeat(10 - Math.round(progress * 10));
         console.log(`    ${(sv.name || id).padEnd(22)} [${bar}] ${Math.round(progress * 100)}%  (${VERSES[sv.shadow_of]?.name || sv.shadow_of} without ${VERSES[sv.shadow_when]?.name || sv.shadow_when})`);
       }
