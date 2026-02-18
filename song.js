@@ -34,6 +34,8 @@ const PEOPLES = {
               trait: 'Songs of change. They learn fast but forget fast. They mix everything.' },
   dog:      { name: 'Dog',      desc: 'Canis lupus familiaris — the wolf who came to the fire. The first friend.',
               trait: 'Not a species you play. A species that plays you. The dog chose you 15,000 years ago and has been rewriting your blood ever since.' },
+  yeast:    { name: 'Yeast',    desc: 'Saccharomyces cerevisiae — the invisible one. The one that was always there.',
+              trait: 'Not a species you play. A species that plays your grain. You won\'t see it for 10,000 years but you\'ll sing to it every baking day.' },
 };
 
 const VERSES = {
@@ -235,6 +237,102 @@ const ASH_VERSES = {
 // Merge ash verses into VERSES so they can be learned/taught/sung
 Object.assign(VERSES, ASH_VERSES);
 
+// ── The Shadows ──────────────────────────────────────────────────────
+// Every song has a shadow: what the song becomes when sung without its roots.
+// Shadow songs emerge when a light song is on the setlist but its foundation
+// is ABSENT. The words are the same. The meaning is different.
+//
+// The Grain Song sung without the Ash Song isn't a broken grain song.
+// It's a DIFFERENT song. Agriculture without ecology. Farming without soil.
+// That different song is the Wall Song. "This is mine."
+//
+// Shadows accumulate over seasons. When the shadow is full, someone in the
+// band just... knows it. The shadow crystallized. The yin emerged from the yang.
+//
+// shadow_of:   the light song that casts this shadow
+// shadow_when: the prereq of the light song that must be ABSENT
+// shadow_rate: how fast the shadow accumulates (per season the condition holds)
+
+const SHADOW_VERSES = {
+  wall:       { tradition: 'shadow', people: 'human', name: 'The Wall Song',
+                desc: 'Grain without ash. Planting without understanding soil. What grows is ownership.',
+                shadow_of: 'grain', shadow_when: 'ash_song', shadow_rate: 0.15,
+                redeems_with: 'ash_song', redeems_into: 'irrigation',
+                prereqs: [], difficulty: 3 },
+  temple:     { tradition: 'shadow', people: 'human', name: 'The Temple Song',
+                desc: 'Walls without burial. Enclosure without death-knowledge. The house for songs becomes a house for power.',
+                shadow_of: 'wall', shadow_when: 'burial', shadow_rate: 0.12,
+                redeems_with: 'burial', redeems_into: 'sanctuary',
+                prereqs: [], difficulty: 4 },
+  empire:     { tradition: 'shadow', people: 'human', name: 'The Empire Song',
+                desc: 'Writing without runes. Accounting without ceremony. The ledger becomes the law.',
+                shadow_of: 'writing', shadow_when: 'rune', shadow_rate: 0.08,
+                redeems_with: 'rune', redeems_into: 'law',
+                prereqs: [], difficulty: 5 },
+  ban:        { tradition: 'shadow', people: 'human', name: 'The Ban',
+                desc: 'The book without the elder. Text without living memory. The dead song forbids the living one.',
+                shadow_of: 'book', shadow_when: 'elder_song', shadow_rate: 0.15,
+                redeems_with: 'elder_song', redeems_into: 'archive',
+                prereqs: [], difficulty: 2 },
+  algorithm:  { tradition: 'shadow', people: 'human', name: 'The Algorithm',
+                desc: 'The ledger without the grain. Counting without what you count. The pattern eats the meaning.',
+                shadow_of: 'ledger', shadow_when: 'grain', shadow_rate: 0.10,
+                redeems_with: 'grain', redeems_into: 'model',
+                prereqs: [], difficulty: 3 },
+  extraction: { tradition: 'shadow', people: 'human', name: 'The Extraction Song',
+                desc: 'Ore without root. Metal without earth-knowledge. You take from the ground without knowing what you take.',
+                shadow_of: 'ore', shadow_when: 'root', shadow_rate: 0.10,
+                redeems_with: 'root', redeems_into: 'stewardship',
+                prereqs: [], difficulty: 3 },
+  platform:   { tradition: 'shadow', people: 'human', name: 'The Platform',
+                desc: 'The algorithm without the book. Optimization without knowledge. Every song becomes content. Every singer becomes a user.',
+                shadow_of: 'algorithm', shadow_when: 'book', shadow_rate: 0.10,
+                redeems_with: 'book', redeems_into: 'commons',
+                prereqs: [], difficulty: 4 },
+  cancel:     { tradition: 'shadow', people: 'human', name: 'The Cancellation',
+                desc: 'The ban without the book. Erasure without record. How a revival dies in committee. How a language project gets defunded.',
+                shadow_of: 'ban', shadow_when: 'book', shadow_rate: 0.15,
+                redeems_with: 'elder_song', redeems_into: 'restoration',
+                prereqs: [], difficulty: 1 },
+};
+
+// ── Redemption Verses ─────────────────────────────────────────────────
+// When shadow meets its missing root on the setlist, something new emerges.
+// Not the original light song. Not the shadow. A third thing.
+// The irrigation canal is neither the wall nor the ash. It's what happens
+// when ownership meets ecology. When you bring the root back.
+const REDEMPTION_VERSES = {
+  irrigation:  { tradition: 'redeemed', people: 'mixed', name: 'The Irrigation Song',
+                 desc: 'Wall meets ash. Ownership meets ecology. The canal carries water to where you chose to plant. The wall becomes a channel.',
+                 prereqs: ['wall', 'ash_song'], difficulty: 4 },
+  sanctuary:   { tradition: 'redeemed', people: 'mixed', name: 'The Sanctuary Song',
+                 desc: 'Temple meets burial. Power meets death-knowledge. The temple becomes a place where the dead can still teach.',
+                 prereqs: ['temple', 'burial'], difficulty: 4 },
+  law:         { tradition: 'redeemed', people: 'mixed', name: 'The Law Song',
+                 desc: 'Empire meets rune. Bureaucracy meets ceremony. The law becomes a covenant, not a command.',
+                 prereqs: ['empire', 'rune'], difficulty: 5 },
+  archive:     { tradition: 'redeemed', people: 'mixed', name: 'The Archive Song',
+                 desc: 'The ban meets the elder. Suppression meets living memory. The archive preserves what the ban tried to kill.',
+                 prereqs: ['ban', 'elder_song'], difficulty: 3 },
+  model:       { tradition: 'redeemed', people: 'mixed', name: 'The Model Song',
+                 desc: 'Algorithm meets grain. Pattern meets substance. The model serves the harvest instead of replacing it.',
+                 prereqs: ['algorithm', 'grain'], difficulty: 4 },
+  stewardship: { tradition: 'redeemed', people: 'mixed', name: 'The Stewardship Song',
+                 desc: 'Extraction meets root. Mining meets earth-knowledge. You take from the ground and put something back.',
+                 prereqs: ['extraction', 'root'], difficulty: 4 },
+  commons:     { tradition: 'redeemed', people: 'mixed', name: 'The Commons Song',
+                 desc: 'Platform meets book. The network becomes a library. Content becomes knowledge again.',
+                 prereqs: ['platform', 'book'], difficulty: 5 },
+  restoration: { tradition: 'redeemed', people: 'mixed', name: 'The Restoration Song',
+                 desc: 'Cancellation meets the elder. Erasure meets living memory. What was defunded grows back from the root.',
+                 prereqs: ['cancel', 'elder_song'], difficulty: 3 },
+};
+
+Object.assign(VERSES, REDEMPTION_VERSES);
+
+// Merge shadow verses into VERSES
+Object.assign(VERSES, SHADOW_VERSES);
+
 // ── The Spirits ─────────────────────────────────────────────────────
 // Spirits are forces of nature that appear to be wills.
 // The bear isn't angry at you. The bear is hungry and you're near the den.
@@ -361,6 +459,30 @@ const SPIRITS = {
     songBoost: 0.04,           // integrity boost per verse per night event (if you have stars)
   },
 
+  yeast: {
+    name: 'Yeast',
+    songId: 'brew',            // The Brewing Song — the primary relationship with the invisible one
+    fallbackSongId: 'bake',    // The Baking Song — you don't know what yeast IS, but you know the bread rises
+    kind: 'great',
+    desc: 'The invisible one. It was always in the grain, in the air, on your hands. You will not see it for 10,000 years. But you will sing to it every baking day. The song that feeds you IS the song that feeds it.',
+    baseDanger: 0.0,           // yeast doesn't attack. It GIVES.
+    dangerPerFelling: 0.0,     // yeast doesn't care about your tree
+    songProtection: 0.0,       // there is no protection FROM yeast. The song IS the relationship.
+    attackFoodLoss: 0,         // yeast doesn't take food. It multiplies food.
+    killChance: 0.0,           // yeast doesn't kill anyone
+    seasons: [0, 1, 2, 3],    // yeast is always there. Always working. It doesn't sleep.
+    allergyKillBonus: 0,
+    allergyWarning: 0,
+    allergyDesc: '',
+    // Yeast-specific: the only spirit that HELPS you. And that's the danger.
+    // More food → more people → more songs needed → faster tree growth → apocalypse.
+    // The invisible engine of civilization. You can't go back once you have it.
+    // The yeast domesticated YOU.
+    invisibleSpirit: true,     // flag: yeast doesn't attack, it accelerates
+    surplusPerSong: 2,         // food bonus per yeast song known
+    populationPressure: true,  // flag: surplus creates birth pressure
+  },
+
   death: {
     name: 'Death',
     songId: 'burial',          // The Burial Song — how to return the dead to the earth
@@ -407,12 +529,15 @@ const APOCALYPSE_TYPES = {
   sky:    { name: 'The Drift',
             desc: 'Too many sky songs. The precession shifts. Everything built on the calendar collapses.',
             traditions: ['sky', 'elf'] },
-  empire: { name: 'The Conquest',
-            desc: 'Too many songs of walls and power. Your knowledge becomes a weapon turned inward.',
-            traditions: ['colonial', 'human'] },
+  shadow: { name: 'The Hollowing',
+            desc: 'Too many shadow songs on the tree. The knowledge is all form and no foundation. The tree is hollow.',
+            traditions: ['shadow'] },
   mixed:  { name: 'The Confusion',
             desc: 'Too many songs from too many traditions. The tower of knowledge babels.',
             traditions: ['mixed'] },
+  redeemed: { name: 'The Return',
+              desc: 'The shadows met their roots. The tree grows back from the inside. Not the same tree. A better one.',
+              traditions: ['redeemed'] },
 };
 
 function determineApocalypse(state) {
@@ -537,14 +662,30 @@ const AGES = {
     newSongs: {
       pottery:    { tradition: 'human', people: 'human', name: 'The Clay Song', prereqs: ['deep_fire', 'root'], difficulty: 2,
                     desc: 'How to make earth hold water. The beginning of storage. The beginning of surplus.' },
-      wall:       { tradition: 'human', people: 'human', name: 'The Wall Song', prereqs: ['grain', 'blade'], difficulty: 3,
-                    desc: 'How to say: this is mine. The first borders. The first wars.' },
-      writing:    { tradition: 'human', people: 'human', name: 'The Writing Song', prereqs: ['tree_song', 'pottery'], difficulty: 4,
-                    desc: 'How to carve a song so anyone can read it. The tree becomes clay becomes paper.' },
-      temple:     { tradition: 'human', people: 'human', name: 'The Temple Song', prereqs: ['wall', 'burial'], difficulty: 4,
-                    desc: 'How to build a house for the songs themselves. Gobekli Tepe.' },
+      // wall is now a shadow song — emerges when grain is sung without ash_song
+      // temple is now a shadow song — emerges when wall is sung without burial
+      // ── Writing has two roots. Both give you writing when they meet. ──
+      ledger:     { tradition: 'human', people: 'human', name: 'The Ledger Song', prereqs: ['grain', 'pottery'], difficulty: 3,
+                    desc: 'How many bushels does the temple owe? Marks on clay. The first writing is accounting. The yeast produces surplus and surplus demands to be counted.' },
+      rune:       { tradition: 'human', people: 'human', name: 'The Rune Song', prereqs: ['burial', 'tree_song'], difficulty: 4,
+                    desc: 'Marks on standing stones. Marks on graves. The dead need names. The paths need markers. Odin hung nine nights on the world tree for this. Writing born from ceremony and wayfinding, not from grain.' },
+      writing:    { tradition: 'mixed', people: 'mixed', name: 'The Writing Song', prereqs: ['ledger', 'rune'], difficulty: 4,
+                    desc: 'When the grain-counter\'s marks meet the grave-marker\'s runes. Two ways of making permanent become one. The song that doesn\'t need a singer.' },
+      // temple is now a shadow song — emerges when wall is sung without burial
+      // ── Yeast songs — the invisible domestication ──
+      // Grain + pottery = the conditions for yeast. It was already there.
+      // You didn't discover it. It discovered your grain stores.
+      brew:       { tradition: 'mixed', people: 'mixed', name: 'The Brewing Song', prereqs: ['grain', 'pottery'], difficulty: 3,
+                    desc: 'The grain left in the clay pot foamed. You drank it and the world changed. Beer before bread — the oldest argument in archaeology. The yeast was always there. You just gave it a house.' },
+      bake:       { tradition: 'human', people: 'human', name: 'The Baking Song', prereqs: ['grain', 'ember'], difficulty: 2,
+                    desc: 'The dough rises. You don\'t know why. You just know the song: knead, wait, fire. The waiting IS the yeast. Every baker\'s hands carry a civilization of invisible singers.' },
+      sourdough:  { tradition: 'mixed', people: 'mixed', name: 'The Mother Song', prereqs: ['bake', 'elder_song'], difficulty: 4,
+                    desc: 'The starter that lives. You feed it. You keep it warm. You pass it to your children. Some sourdough starters are older than any living song. The mother IS the yeast, kept alive like a fire. The first inheritance that isn\'t blood.' },
+      mead:       { tradition: 'mixed', people: 'mixed', name: 'The Mead Song', prereqs: ['brew', 'root'], difficulty: 3,
+                    desc: 'Honey and water and time. The oldest alcohol. The bees do the first half. The yeast does the second. You just watch. In the Kalevala, mead takes longer to brew than the world takes to create.' },
     },
     encounter_peoples: ['human'],
+    complications: ['yeast_mechanic'],
     bridges: {
       iron:      { requires: ['forge', 'wall'], desc: 'Metal replaces stone. Power replaces song.' },
       ice:       { requires: ['glacier', 'precession'], desc: 'The long drift. The calendar says the ice is coming back.' },
@@ -558,12 +699,10 @@ const AGES = {
     newSongs: {
       sail:       { tradition: 'human', people: 'human', name: 'The Sail Song', prereqs: ['sea_cross', 'loom'], difficulty: 3,
                     desc: 'How to make the wind carry you. The beginning of crossing oceans.' },
-      empire:     { tradition: 'colonial', people: 'human', name: 'The Empire Song', prereqs: ['wall', 'writing', 'forge'], difficulty: 5,
-                    desc: 'How to make strangers obey a song they did not choose. The most dangerous verse.' },
+      // empire is now a shadow song — emerges when writing is sung without rune
       book:       { tradition: 'human', people: 'human', name: 'The Book', prereqs: ['writing', 'elder_song'], difficulty: 3,
                     desc: 'How to make a tree into a song that never forgets. But also never changes.' },
-      ban:        { tradition: 'colonial', people: 'human', name: 'The Ban', prereqs: ['empire'], difficulty: 2,
-                    desc: 'How to forbid a song. The 1647 Forest Act. The boarding schools. The language death.' },
+      // ban is now a shadow song — emerges when book is sung without elder_song
     },
     encounter_peoples: ['human'],
     complications: ['ban_mechanic'],
@@ -584,8 +723,7 @@ const AGES = {
                     desc: 'How to read the songs written in your body. 2% Neanderthal. 5% Denisovan. All of it, singing.' },
       revive:     { tradition: 'human', people: 'human', name: 'The Revival Song', prereqs: ['archaeology', 'elder_song'], difficulty: 4,
                     desc: 'How to teach a song that no one alive remembers. Language revitalization. The undeath of knowledge.' },
-      cancel:     { tradition: 'colonial', people: 'human', name: 'The Cancellation', prereqs: ['ban', 'empire'], difficulty: 1,
-                    desc: 'How a revival gets defunded. How a language project gets cancelled. How songs die in committee.' },
+      // cancel is now a shadow song — emerges when ban is sung without book
     },
     encounter_peoples: ['human'],
     complications: ['ban_mechanic', 'cancel_mechanic'],
@@ -601,12 +739,7 @@ const AGES = {
     name: 'The Age of the Tech Tree',  yearsBP: 0,
     desc: 'The tree is no longer a metaphor. It is the system. It grows exponentially. It has replaced the sun. You carved everything on it and now it is all there is.',
     newSongs: {
-      algorithm:  { tradition: 'colonial', people: 'human', name: 'The Algorithm', prereqs: ['writing', 'empire'], difficulty: 3,
-                    desc: 'The song that sings itself. It does not need a singer. It does not need a listener. It optimizes.' },
-      platform:   { tradition: 'colonial', people: 'human', name: 'The Platform', prereqs: ['algorithm', 'book'], difficulty: 4,
-                    desc: 'The tree that grows by eating other trees. Every song becomes content. Every singer becomes a user.' },
-      extraction: { tradition: 'colonial', people: 'human', name: 'The Extraction Song', prereqs: ['empire', 'ore'], difficulty: 3,
-                    desc: 'How to turn the earth inside out for the tree. The tree needs rare earth. The tree needs lithium. The tree needs.' },
+      // algorithm, platform, extraction are now shadow songs — they emerge from absence
       last_song:  { tradition: 'mixed', people: 'mixed', name: 'The Last Song', prereqs: ['genome', 'bear_gift', 'den_memory'], difficulty: 5,
                     desc: 'The only song that can fell the final tree. It requires remembering what was before the tree. Before the hominids. The bears.' },
     },
@@ -675,7 +808,7 @@ const BLOOD_VERSES = {
                    triggers: [],           eases: ['island', 'small_hunt', 'tide', 'feast', 'shelter'],
                    patterns: ['halfling'] },
   song_blood:    { name: 'Song Blood',    desc: 'The larynx that changed everything. The capacity for complex language.',
-                   triggers: [],           eases: ['lullaby', 'elder_song', 'tree_song', 'writing'],
+                   triggers: [],           eases: ['lullaby', 'elder_song', 'tree_song', 'ledger', 'rune', 'writing'],
                    patterns: ['human'] },
   change_blood:  { name: 'Change Blood',  desc: 'The restlessness. Learn fast, forget fast, move on.',
                    triggers: [],           eases: ['spark', 'track', 'seasons', 'herd', 'migration'],
@@ -692,6 +825,9 @@ const BLOOD_VERSES = {
   dog_blood:     { name: 'Dog Blood',     desc: 'The wolf who stayed. 15,000 years of sleeping by the fire. The oldest alliance.',
                    triggers: ['wolf'],     eases: ['dog', 'dog_guard', 'dog_hunt', 'dog_sled', 'dog_burial'],
                    patterns: ['dog'] },
+  yeast_blood:   { name: 'Yeast Blood',  desc: 'The invisible symbiont. 10,000 years of rising bread and foaming beer. It lives in your hands, your pots, your air.',
+                   triggers: ['yeast'],    eases: ['brew', 'bake', 'sourdough', 'mead'],
+                   patterns: ['yeast'] },
 };
 
 const BLOOD_DRIFT = 0.005;           // per season, blood verses drift down
@@ -716,6 +852,7 @@ const PEOPLE_BLOOD = {
   halfling: { primary: ['island_blood', 'coastal_blood'],        name: 'Halfling' },
   human:    { primary: ['song_blood', 'change_blood'],          name: 'Human' },
   dog:      { primary: ['dog_blood'],                           name: 'Dog' },
+  yeast:    { primary: ['yeast_blood'],                        name: 'Yeast' },
 };
 
 function getBlood(person) {
@@ -967,11 +1104,26 @@ const LEARN_RATE_FOCUSED = 0.25;         // focused 1-on-1 apprenticeship bonus
 // Capacity depends on band size: more people = more fires = more songs.
 // Order matters: early songs transmit better to youth.
 
-function setlistCapacity(people) {
+function setlistCapacity(people, state) {
   const singers = people.filter(p => ageCategory(p.age) !== 'youth').length;
   if (singers <= 0) return 0;
-  return Math.floor(Math.log2(singers) * 2) + 1;
+  let cap = Math.floor(Math.log2(singers) * 2) + 1;
+  // Rune/ledger give small memory aids. Writing doesn't expand the setlist —
+  // it does something worse. See the absorption section.
+  if (state) {
+    const knows = (v) => people.some(p => p.verses[v] && p.verses[v] >= GARBLE_THRESHOLD);
+    if (knows('rune')) cap += 2;    // carved marks as memory aids
+    if (knows('ledger')) cap += 1;  // tally marks track what's been sung
+  }
+  return cap;
 }
+
+// ── The Writing Integrity ──────────────────────────────────────────
+// Someone who knows writing can "sing" any carved verse by reading it.
+// But reading is not singing. The integrity is flat — no position factor,
+// no blood resonance, no deepening with repetition. Just... text.
+// This is the Babel mechanic. Every song equally accessible, equally dead.
+const WRITING_INTEGRITY = 0.5;  // a literate person reads at 50%. Accurate but flat.
 
 // Position factor: how well a song at position i (0-indexed) transmits to youth
 function positionFactor(position, totalSlots) {
@@ -1318,6 +1470,9 @@ function newState(ageKey = 'stone', inheritedSongs = {}, previousAges = [], unlo
     setlist: [],                // verse IDs in performance order
     setlistHistory: {},         // verseId → consecutive seasons on setlist (repetition bonus)
 
+    // The Shadows — what songs become when sung without their roots
+    shadows: {},                // shadowId → accumulation (0.0 to 1.0)
+
     // The Spirits — animal and great
     spirits: Object.fromEntries(
       Object.entries(SPIRITS).map(([key, def]) => [key, { spirit: 1.0, danger: def.baseDanger }])
@@ -1380,16 +1535,23 @@ function advanceSeason(state) {
   // Player can override with `setlist` command.
   if (!state.setlist) state.setlist = [];
   if (!state.setlistHistory) state.setlistHistory = {};
-  let capacity = setlistCapacity(state.people);
+  let capacity = setlistCapacity(state.people, state);
   // Night penalty — dark without stars reduces singing time
   if (state.nightPenalty && state.nightPenalty > 0) {
     capacity = Math.max(1, capacity - state.nightPenalty);
     state.nightPenalty = 0;  // resets each season
   }
 
-  // Clean setlist: remove songs nobody knows anymore
+  // Writing: check if anyone is literate (can read carved verses)
+  const hasLiterate = state.people.some(p =>
+    ageCategory(p.age) !== 'youth' && p.verses['writing'] && p.verses['writing'] >= GARBLE_THRESHOLD
+  );
+
+  // Clean setlist: remove songs nobody can sing anymore
+  // (literate people can still "sing" carved verses by reading them)
   state.setlist = state.setlist.filter(v =>
-    state.people.some(p => p.verses[v] && p.verses[v] >= LOST_THRESHOLD)
+    state.people.some(p => p.verses[v] && p.verses[v] >= LOST_THRESHOLD) ||
+    (hasLiterate && state.tree.carved.includes(v))
   );
 
   // Auto-fill empty slots with best-known songs not already on setlist
@@ -1400,6 +1562,14 @@ function advanceSeason(state) {
       for (const [v, integrity] of Object.entries(p.verses)) {
         if (integrity >= LOST_THRESHOLD) {
           allKnown[v] = Math.max(allKnown[v] || 0, integrity);
+        }
+      }
+    }
+    // Literate people can read any carved verse at WRITING_INTEGRITY
+    if (hasLiterate) {
+      for (const cv of state.tree.carved) {
+        if (!allKnown[cv] || allKnown[cv] < WRITING_INTEGRITY) {
+          allKnown[cv] = WRITING_INTEGRITY;
         }
       }
     }
@@ -1425,14 +1595,26 @@ function advanceSeason(state) {
   if (state.setlist.length > 0) {
     msgs.push(`  The song tonight (${state.setlist.length}/${capacity} slots):`);
     state.setlist.forEach((v, i) => {
-      const bestSinger = state.people.reduce((best, p) => {
-        const integrity = p.verses[v] || 0;
-        return integrity > (best?.verses[v] || 0) ? p : best;
-      }, null);
-      const integrity = bestSinger?.verses[v] || 0;
+      const isCarved = state.tree.carved.includes(v);
+      let bestSinger = null;
+      let bestIntegrity = 0;
+      let isReading = false;
+      for (const p of state.people) {
+        if (ageCategory(p.age) === 'youth') continue;
+        const known = p.verses[v] || 0;
+        if (known > bestIntegrity) { bestSinger = p; bestIntegrity = known; isReading = false; }
+      }
+      // Literate fallback: can read carved verses at WRITING_INTEGRITY
+      if (bestIntegrity < WRITING_INTEGRITY && isCarved && hasLiterate) {
+        const reader = state.people.find(p =>
+          ageCategory(p.age) !== 'youth' && p.verses['writing'] && p.verses['writing'] >= GARBLE_THRESHOLD
+        );
+        if (reader) { bestSinger = reader; bestIntegrity = WRITING_INTEGRITY; isReading = true; }
+      }
       const reps = state.setlistHistory[v] || 0;
       const repStr = reps > 1 ? ` (${reps} seasons)` : '';
-      msgs.push(`    ${i + 1}. ${VERSES[v]?.name || v} — ${bestSinger?.name || '?'} sings at ${Math.round(integrity * 100)}%${repStr}`);
+      const verb = isReading ? 'reads' : 'sings';
+      msgs.push(`    ${i + 1}. ${VERSES[v]?.name || v} — ${bestSinger?.name || '?'} ${verb} at ${Math.round(bestIntegrity * 100)}%${repStr}`);
     });
   }
 
@@ -1458,10 +1640,20 @@ function advanceSeason(state) {
 
       // Find best teacher for this song
       let bestTeacherIntegrity = 0;
+      const isCarved = state.tree.carved.includes(v);
       for (const p of state.people) {
         if (ageCategory(p.age) === 'youth') continue;
+        // The person actually knows the song — best case
         if (p.verses[v] && p.verses[v] > bestTeacherIntegrity) {
           bestTeacherIntegrity = p.verses[v];
+        }
+        // Writing: a literate person can read any carved verse off the tree.
+        // They sing it at flat WRITING_INTEGRITY — accurate but flat.
+        // The song still goes through the setlist pipeline (position, blood, etc).
+        if (isCarved && p.verses['writing'] && p.verses['writing'] >= GARBLE_THRESHOLD) {
+          if (WRITING_INTEGRITY > bestTeacherIntegrity) {
+            bestTeacherIntegrity = WRITING_INTEGRITY;
+          }
         }
       }
       if (bestTeacherIntegrity < LOST_THRESHOLD) continue;
@@ -1486,6 +1678,89 @@ function advanceSeason(state) {
         // Not instant — takes a few seasons of listening to fully absorb
         const gain = (absorbed - current) * 0.3;  // 30% of remaining gap per season
         student.verses[v] = current + gain;
+      }
+    }
+  }
+
+
+
+  // ── Shadow accumulation — songs sung without roots cast shadows ──
+  // For each shadow verse, check if its light song is on the setlist
+  // and its required foundation is ABSENT (not on setlist, not carved).
+  // If so, the shadow accumulates. When it hits 1.0, the shadow emerges.
+  if (!state.shadows) state.shadows = {};
+  for (const [shadowId, shadowDef] of Object.entries(SHADOW_VERSES)) {
+    // Skip if someone already knows this shadow
+    if (state.people.some(p => p.verses[shadowId] && p.verses[shadowId] >= GARBLE_THRESHOLD)) continue;
+    const lightOnSetlist = state.setlist.includes(shadowDef.shadow_of);
+    const lightKnown = state.people.some(p =>
+      p.verses[shadowDef.shadow_of] && p.verses[shadowDef.shadow_of] >= GARBLE_THRESHOLD
+    );
+    if (!lightOnSetlist && !lightKnown) continue; // light song not active
+    const foundationPresent = state.setlist.includes(shadowDef.shadow_when) ||
+      state.tree.carved.includes(shadowDef.shadow_when) ||
+      // Also check: does someone know the foundation well?
+      state.people.some(p => p.verses[shadowDef.shadow_when] && p.verses[shadowDef.shadow_when] >= GARBLE_THRESHOLD);
+    if (foundationPresent) {
+      // Foundation is present — shadow recedes
+      state.shadows[shadowId] = Math.max(0, (state.shadows[shadowId] || 0) - 0.05);
+      continue;
+    }
+    // Foundation absent — shadow grows
+    state.shadows[shadowId] = (state.shadows[shadowId] || 0) + shadowDef.shadow_rate;
+    if (state.shadows[shadowId] >= 1.0) {
+      // Shadow crystallizes — the strongest singer of the light song learns the shadow
+      let bestSinger = null;
+      let bestLight = 0;
+      for (const p of state.people) {
+        if (ageCategory(p.age) === 'youth') continue;
+        const v = p.verses[shadowDef.shadow_of] || 0;
+        if (v > bestLight) { bestSinger = p; bestLight = v; }
+      }
+      if (bestSinger) {
+        bestSinger.verses[shadowId] = bestLight * 0.8; // shadow starts at 80% of the light
+        msgs.push(`  A shadow falls. ${bestSinger.name} now knows "${shadowDef.name}".`);
+        msgs.push(`    ${shadowDef.desc}`);
+        state.shadows[shadowId] = 0; // reset accumulator
+      }
+    } else if (state.shadows[shadowId] > 0.5) {
+      msgs.push(`  The shadow of "${shadowDef.name}" grows... (${Math.round(state.shadows[shadowId] * 100)}%)`);
+    }
+  }
+
+  // ── Redemption discovery — shadow meets its missing root ──
+  // When a shadow verse and its redeems_with root are BOTH on the setlist,
+  // the redemption verse can emerge. Like adjacency discovery, but for yin-yang.
+  for (const [shadowId, shadowDef] of Object.entries(SHADOW_VERSES)) {
+    if (!shadowDef.redeems_with || !shadowDef.redeems_into) continue;
+    const redemptionId = shadowDef.redeems_into;
+    // Skip if someone already knows the redemption
+    if (state.people.some(p => p.verses[redemptionId] && p.verses[redemptionId] >= GARBLE_THRESHOLD)) continue;
+    // Shadow must be known AND on setlist
+    const shadowKnown = state.people.some(p =>
+      p.verses[shadowId] && p.verses[shadowId] >= GARBLE_THRESHOLD
+    );
+    const rootKnown = state.people.some(p =>
+      p.verses[shadowDef.redeems_with] && p.verses[shadowDef.redeems_with] >= GARBLE_THRESHOLD
+    );
+    if (!shadowKnown || !rootKnown) continue;
+    const bothOnSetlist = state.setlist.includes(shadowId) && state.setlist.includes(shadowDef.redeems_with);
+    if (!bothOnSetlist) continue;
+    // Discovery chance — like adjacency but rarer. This is the hard path.
+    if (Math.random() < 0.08) {
+      // The person who knows both best learns the redemption
+      let redeemer = null;
+      let bestScore = 0;
+      for (const p of state.people) {
+        if (ageCategory(p.age) === 'youth') continue;
+        const s = (p.verses[shadowId] || 0) + (p.verses[shadowDef.redeems_with] || 0);
+        if (s > bestScore) { redeemer = p; bestScore = s; }
+      }
+      if (redeemer) {
+        redeemer.verses[redemptionId] = bestScore * 0.4; // redemptions start rough
+        const rVerse = VERSES[redemptionId];
+        msgs.push(`  !! "${rVerse?.name || redemptionId}" emerges — shadow meets its root. !!`);
+        msgs.push(`    ${rVerse?.desc || ''}`);
       }
     }
   }
@@ -1647,6 +1922,10 @@ function advanceSeason(state) {
   if (bandKnows('dog')) gather += 1;         // the dog guards the food
   if (bandKnows('dog_hunt')) gather += 3;    // hunting with dogs changes everything
   if (bandKnows('dog_sled')) gather += 2;    // range expansion
+  if (bandKnows('bake')) gather += 2;        // bread — grain goes further when it rises
+  if (bandKnows('brew')) gather += 3;        // beer — liquid bread that doesn't spoil. The great preservative.
+  if (bandKnows('mead')) gather += 2;        // mead — honey wine lasts forever. The oldest preservation.
+  if (bandKnows('sourdough')) gather += 2;   // the mother — the starter that outlives the baker
 
   state.food += gather - mouths;
   if (state.food < 0) {
@@ -1765,6 +2044,61 @@ function advanceSeason(state) {
       // Thin air people are closer to the sky — more exposed
       const hasAltitude = state.people.some(p => bloodLevel(p, 'thin_air_blood') > 0.3);
       if (hasAltitude) ss.danger += 0.02;
+    }
+
+    // ── Yeast special: the invisible one doesn't work like other spirits ──
+    // It doesn't have danger. It has GENEROSITY. It triggers every season you know its songs.
+    // The spirit level tracks how embedded the yeast is in your culture (always rising).
+    if (spiritDef.invisibleSpirit) {
+      const yeastSongs = ['brew', 'bake', 'sourdough', 'mead'];
+      const knownYeast = yeastSongs.filter(s => bandKnows(s));
+      if (knownYeast.length > 0) {
+        // Yeast spirit always rises — it's the one you can't anger. Only feed.
+        ss.spirit = Math.min(1.0, ss.spirit + 0.05 * knownYeast.length);
+        ss.danger = 0; // yeast has no danger. It has surplus.
+
+        // The gift happens every season. Not a chance roll. A certainty.
+        const surplus = knownYeast.length * (spiritDef.surplusPerSong || 2);
+        state.food += surplus;
+        msgs.push(`  The invisible one stirs. The bread rises. The beer foams. (+${surplus} food)`);
+        if (bandKnows('sourdough')) {
+          msgs.push(`  The mother lives. She is older than anyone in the band.`);
+        }
+        // Population pressure: surplus breeds. When food is abundant, more births.
+        // The power isn't a mechanic. The power IS the songs.
+        // The Brewing Song IS control of the grain. The Wall Song IS the border.
+        // The Temple Song IS who decides what gets sung. Writing IS the singer losing power.
+        // You don't need a hierarchy mechanic. You need to choose what goes on the setlist.
+        const foodPerPerson = state.food / Math.max(1, state.people.length);
+        if (foodPerPerson > 4 && Math.random() < 0.25) {
+          const adults = state.people.filter(p => ageCategory(p.age) === 'adult');
+          if (adults.length >= 2) {
+            const parent1 = adults[Math.floor(Math.random() * adults.length)];
+            const remaining = adults.filter(a => a !== parent1);
+            const parent2 = remaining[Math.floor(Math.random() * remaining.length)];
+            if (parent2) {
+              const names = ['Barley', 'Hops', 'Malt', 'Leaven', 'Foam', 'Crust', 'Rise', 'Starter',
+                             'Kvass', 'Kumiss', 'Barm', 'Must', 'Wort', 'Dregs', 'Crumb'];
+              const name = names[Math.floor(Math.random() * names.length)];
+              const childBlood = {};
+              const b1 = getBlood(parent1);
+              const b2 = getBlood(parent2);
+              for (const bv of new Set([...Object.keys(b1), ...Object.keys(b2)])) {
+                childBlood[bv] = ((b1[bv] || 0) + (b2[bv] || 0)) / 2;
+              }
+              const sinkBoost = songSinkBlood(parent1, parent2);
+              for (const [bv, amount] of Object.entries(sinkBoost)) {
+                childBlood[bv] = (childBlood[bv] || 0) + amount;
+              }
+              const childPeople = identifyPeople({ blood: childBlood }, state.ageKey);
+              const child = { name, age: 0, people: childPeople, blood: childBlood, verses: {} };
+              state.people.push(child);
+              msgs.push(`  The surplus feeds another mouth. ${name} is born.`);
+            }
+          }
+        }
+      }
+      continue; // yeast doesn't do the normal attack path
     }
 
     const effectiveDanger = ss.danger * (1 - ss.spirit * spiritDef.songProtection);
@@ -2047,7 +2381,7 @@ const ACTIONS = {
   // Anything not listed drops off. Auto-fills remaining capacity.
   setlist(state, ...verseIds) {
     if (!state.setlist) state.setlist = [];
-    const cap = setlistCapacity(state.people);
+    const cap = setlistCapacity(state.people, state);
     const msgs = [];
 
     if (verseIds.length === 0 || !verseIds[0]) {
@@ -2105,7 +2439,7 @@ const ACTIONS = {
     const idx = state.setlist.indexOf(verseId);
     if (idx >= 0) state.setlist.splice(idx, 1);
     state.setlist.unshift(verseId);
-    const cap = setlistCapacity(state.people);
+    const cap = setlistCapacity(state.people, state);
     while (state.setlist.length > cap) state.setlist.pop();
     return [`  "${VERSES[verseId].name}" moved to opening position.`];
   },
@@ -2337,14 +2671,25 @@ function printStatus(state) {
   const spiritStr = (s) => s > 0.7 ? 'peace' : s > 0.4 ? 'uneasy' : s > 0.2 ? 'angry' : 'RAGE';
   const spirits = state.spirits || {};
   const animalSpirits = Object.entries(SPIRITS).filter(([, def]) => def.kind === 'animal');
-  const greatSpirits = Object.entries(SPIRITS).filter(([, def]) => def.kind === 'great');
+  const greatSpirits = Object.entries(SPIRITS).filter(([, def]) => def.kind === 'great' && !def.invisibleSpirit);
+  const yeastSpirit = Object.entries(SPIRITS).find(([, def]) => def.invisibleSpirit);
   const fmtSpirit = ([key, def]) => {
     const s = spirits[key]?.spirit ?? 1;
     return `${def.name}: ${spiritStr(s)}`;
   };
   console.log(`  Food: ${state.food}  Sun: ${Math.round(state.sunlight * 100)}%  Fellings: ${state.fellings}`);
   console.log(`  Spirits: ${animalSpirits.map(fmtSpirit).join('  ')}`);
-  console.log(`           ${greatSpirits.map(fmtSpirit).join('  ')}`);
+  const greatLine = greatSpirits.map(fmtSpirit).join('  ');
+  // Yeast only shows when someone knows a yeast song — it's invisible until then
+  const bandKnowsDisplay = (v) => state.people.some(p => p.verses[v] && p.verses[v] >= GARBLE_THRESHOLD);
+  const hasYeast = ['brew', 'bake', 'sourdough', 'mead'].some(s => bandKnowsDisplay(s));
+  if (yeastSpirit && hasYeast) {
+    const ys = spirits[yeastSpirit[0]]?.spirit ?? 0;
+    const yeastStr = `Yeast: ${ys > 0.7 ? 'thriving' : ys > 0.3 ? 'rising' : 'stirring'}`;
+    console.log(`           ${greatLine}  ${yeastStr}`);
+  } else {
+    console.log(`           ${greatLine}`);
+  }
   console.log(`═══════════════════════════════════════════════════`);
 
   // The Tree
@@ -2362,7 +2707,7 @@ function printStatus(state) {
 
   // The Setlist
   if (state.setlist && state.setlist.length > 0) {
-    const cap = setlistCapacity(state.people);
+    const cap = setlistCapacity(state.people, state);
     console.log();
     console.log(`  THE SETLIST (${state.setlist.length}/${cap}):`);
     state.setlist.forEach((v, i) => {
@@ -2374,6 +2719,21 @@ function printStatus(state) {
       const repStr = reps > 1 ? ` [${reps}]` : '';
       console.log(`    ${i + 1}. ${(VERSES[v]?.name || v).padEnd(22)} ${bestSinger?.name?.padEnd(12) || '?'.padEnd(12)} ${Math.round(integrity * 100)}%  →${Math.round(posFac * 100)}%${repStr}`);
     });
+  }
+
+  // Active shadows
+  if (state.shadows) {
+    const activeShadows = Object.entries(state.shadows).filter(([, v]) => v > 0.1);
+    if (activeShadows.length > 0) {
+      console.log();
+      console.log(`  SHADOWS:`);
+      for (const [id, progress] of activeShadows) {
+        const sv = SHADOW_VERSES[id];
+        if (!sv) continue;
+        const bar = '▓'.repeat(Math.round(progress * 10)) + '░'.repeat(10 - Math.round(progress * 10));
+        console.log(`    ${(sv.name || id).padEnd(22)} [${bar}] ${Math.round(progress * 100)}%  (${VERSES[sv.shadow_of]?.name || sv.shadow_of} without ${VERSES[sv.shadow_when]?.name || sv.shadow_when})`);
+      }
+    }
   }
 
   // The People
