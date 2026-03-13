@@ -58,6 +58,10 @@ export type GameState = {
   fellings: number;
   totalLost: string[];
 
+  // Apocalypse
+  raptured: { name: string; verses: string[] }[];    // uploaded to the tree
+  backgroundProcesses: string[];                       // old songs that can't be killed
+
   // Transient
   nightPenalty?: number;
   collapsed?: boolean;
@@ -119,5 +123,8 @@ export function newState(
 
     fellings: 0,
     totalLost: [],
+
+    raptured: [],
+    backgroundProcesses: [],
   };
 }

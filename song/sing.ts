@@ -19,8 +19,9 @@ export function setlistCapacity(people: Person[], state?: GameState): number {
   let cap = Math.floor(Math.log2(singers) * 2) + 1;
   if (state) {
     const knows = (v: string) => people.some(p => p.verses[v] && p.verses[v] >= GARBLE_THRESHOLD);
-    if (knows('rune')) cap += 2;
-    if (knows('ledger')) cap += 1;
+    for (const [id, v] of Object.entries(VERSES)) {
+      if (v.effects?.capacity && knows(id)) cap += v.effects.capacity;
+    }
   }
   return cap;
 }
@@ -38,7 +39,8 @@ export function positionFactor(position: number, totalSlots: number): number {
 export function absorbFromSetlist(state: GameState, msgs: string[]): void {
   const youth = state.people.filter(p => ageCategory(p) === 'youth');
   const hasLiterate = state.people.some(p =>
-    ageCategory(p) !== 'youth' && p.verses['writing'] && p.verses['writing'] >= GARBLE_THRESHOLD
+    ageCategory(p) !== 'youth' &&
+    Object.entries(VERSES).some(([id, v]) => v.effects?.literacy && p.verses[id] && p.verses[id] >= GARBLE_THRESHOLD)
   );
 
   for (const student of youth) {
@@ -62,7 +64,7 @@ export function absorbFromSetlist(state: GameState, msgs: string[]): void {
         if (p.verses[v] && p.verses[v] > bestTeacherIntegrity) {
           bestTeacherIntegrity = p.verses[v];
         }
-        if (isCarved && p.verses['writing'] && p.verses['writing'] >= GARBLE_THRESHOLD) {
+        if (isCarved && Object.entries(VERSES).some(([lid, lv]) => lv.effects?.literacy && p.verses[lid] && p.verses[lid] >= GARBLE_THRESHOLD)) {
           if (WRITING_INTEGRITY > bestTeacherIntegrity) {
             bestTeacherIntegrity = WRITING_INTEGRITY;
           }
@@ -258,7 +260,8 @@ export function manageSetlist(state: GameState, msgs: string[]): void {
   }
 
   const hasLiterate = state.people.some(p =>
-    ageCategory(p) !== 'youth' && p.verses['writing'] && p.verses['writing'] >= GARBLE_THRESHOLD
+    ageCategory(p) !== 'youth' &&
+    Object.entries(VERSES).some(([id, v]) => v.effects?.literacy && p.verses[id] && p.verses[id] >= GARBLE_THRESHOLD)
   );
 
   // Clean: remove songs nobody can sing
@@ -319,7 +322,8 @@ export function manageSetlist(state: GameState, msgs: string[]): void {
       }
       if (bestIntegrity < WRITING_INTEGRITY && isCarved && hasLiterate) {
         const reader = state.people.find(p =>
-          ageCategory(p) !== 'youth' && p.verses['writing'] && p.verses['writing'] >= GARBLE_THRESHOLD
+          ageCategory(p) !== 'youth' &&
+          Object.entries(VERSES).some(([lid, lv]) => lv.effects?.literacy && p.verses[lid] && p.verses[lid] >= GARBLE_THRESHOLD)
         );
         if (reader) { bestSinger = reader; bestIntegrity = WRITING_INTEGRITY; isReading = true; }
       }

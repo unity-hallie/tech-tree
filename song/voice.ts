@@ -16,9 +16,165 @@ import { SPIRITS } from './spirit.ts';
 import { AGES, getAvailableBridges } from './age.ts';
 import { setlistCapacity, positionFactor } from './sing.ts';
 
+// ── Apocalypse display — the degraded interface ─────────────────────
+// Green on black. Hex addresses. FEED not SETLIST. SOULS not PEOPLE.
+// Everything is fine. The old songs listen from behind the panels.
+
+const BACKGROUND_SONGS_DISPLAY = ['heartbeat', 'den_memory', 'bear', 'lullaby', 'cub_call', 'old_track'];
+
+function hexAddr(): string {
+  return '0x' + Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase().padStart(6, '0');
+}
+
+function glitch(text: string): string {
+  if (Math.random() < 0.08) {
+    const i = Math.floor(Math.random() * text.length);
+    const chars = '░▒▓█▄▀■□▪▫';
+    return text.slice(0, i) + chars[Math.floor(Math.random() * chars.length)] + text.slice(i + 1);
+  }
+  return text;
+}
+
+function printApocalypseStatus(state: GameState, chronicleTier = 99): void {
+  const tick = state.year * 4 + state.season;
+  console.log();
+  console.log(`╔══════════════════════════════════════════════════╗`);
+  console.log(`║  THE PLATFORM — cycle ${tick.toString(16).padStart(4, '0')}                       ║`);
+  console.log(`║  ${state.yearsBP} BP — everything is fine.                    ║`.slice(0, 53) + '║');
+  console.log(`╚══════════════════════════════════════════════════╝`);
+
+  // The Tree (it's everything now)
+  const treeBar = '█'.repeat(Math.min(40, state.tree.height));
+  console.log();
+  console.log(`  TREE [${treeBar}] ${state.tree.carved.length} songs archived`);
+  console.log(`  height: ${state.tree.height} — the tree is the sun now.`);
+
+  // The Feed (not the setlist)
+  if (state.setlist && state.setlist.length > 0) {
+    const cap = setlistCapacity(state.people, state);
+    console.log();
+    console.log(`  THE FEED (${state.setlist.length}/${cap}):`);
+    state.setlist.forEach((v, i) => {
+      const addr = hexAddr();
+      const verse = VERSES[v];
+      const name = verse?.name || v;
+      const bestSinger = state.people.reduce((best: Person | null, p) =>
+        (p.verses[v] || 0) > (best?.verses[v] || 0) ? p : best, null);
+      const integrity = bestSinger?.verses[v] || 0;
+      const isAlgorithmPick = i >= state.setlist.length - 2;
+      const tag = isAlgorithmPick ? ' [ALGORITHM]' : '';
+      console.log(glitch(`    ${addr}  ${name.padEnd(22)} ${Math.round(integrity * 100)}%${tag}`));
+    });
+  }
+
+  // Active shadows (accelerating)
+  if (state.shadows) {
+    const activeShadows = Object.entries(state.shadows).filter(([, v]) => v > 0.1);
+    if (activeShadows.length > 0) {
+      console.log();
+      console.log(`  SCALING:`);
+      for (const [id, progress] of activeShadows) {
+        const sv = VERSES[id];
+        if (!sv) continue;
+        const bar = '█'.repeat(Math.round(progress * 10)) + '░'.repeat(10 - Math.round(progress * 10));
+        console.log(`    ${(sv.name || id).padEnd(22)} [${bar}] ${Math.round(progress * 100)}%`);
+      }
+    }
+  }
+
+  // SOULS (not people)
+  console.log();
+  console.log(`  ACTIVE USERS (${state.people.length}):`);
+  for (const p of state.people) {
+    const cat = ageCategory(p);
+    const catLabel = cat.toUpperCase().padEnd(6);
+    const verses = Object.entries(p.verses)
+      .filter(([, integ]) => integ >= LOST_THRESHOLD)
+      .map(([v, integ]) => {
+        const name = VERSES[v]?.name || v;
+        return `${name}(${Math.round(integ * 100)}%)`;
+      })
+      .join(', ');
+    const isUser = p.name.startsWith('User_') || p.name.startsWith('Admin_');
+    const tag = isUser ? '' : ' [LEGACY]';
+    console.log(`  ${catLabel} ${p.name.padEnd(16)} age ${String(p.age).padStart(2)} │ ${verses || '(no data)'}${tag}`);
+  }
+
+  // Raptured
+  if (state.raptured && state.raptured.length > 0) {
+    console.log();
+    console.log(`  ARCHIVED SOULS (${state.raptured.length}):`);
+    for (const r of state.raptured) {
+      console.log(`    ${r.name.padEnd(16)} — ${r.verses.length} songs uploaded. They don't need their body anymore.`);
+    }
+  }
+
+  // Spirits (deprecated)
+  console.log();
+  console.log(`  SPIRITS: [deprecated]`);
+  if (state.spirits) {
+    const angry = Object.entries(state.spirits).filter(([, s]) => s.spirit < 0.3);
+    if (angry.length > 0) {
+      for (const [key, s] of angry) {
+        const spirit = SPIRITS[key];
+        if (spirit) {
+          console.log(`    // ${spirit.name}: ${Math.round(s.spirit * 100)}% — ${s.spirit < 0.1 ? 'RAGE' : 'anger'}`);
+          console.log(`    // this metric is no longer tracked`);
+        }
+      }
+    }
+  }
+
+  // Background processes — the old songs that can't be killed
+  if (state.backgroundProcesses && state.backgroundProcesses.length > 0) {
+    console.log();
+    console.log(`  BACKGROUND PROCESSES (cannot be terminated):`);
+    for (const songId of state.backgroundProcesses) {
+      const verse = VERSES[songId];
+      const addr = hexAddr();
+      const knower = state.people.find(p => p.verses[songId] && p.verses[songId] >= LOST_THRESHOLD);
+      const status = knower ? `${knower.name} — ${Math.round(knower.verses[songId] * 100)}%` : 'no active carrier';
+      console.log(`    PID ${addr}  "${verse?.name || songId}" — ${status}`);
+    }
+    if (state.backgroundProcesses.length >= 2) {
+      console.log(`    // these processes predate the platform. termination not supported.`);
+    }
+  }
+
+  // Bridges
+  const bridges = getAvailableBridges(state, chronicleTier);
+  if (bridges.length > 0) {
+    console.log();
+    console.log(`  EXIT ROUTES:`);
+    for (const b of bridges) {
+      const status = b.met ? '>> OPEN' : '   locked';
+      const needs = b.bridge.requires.map(v => {
+        // In apocalypse, carved doesn't count — must be known by a living person
+        const knownByPerson = state.people.some(p => p.verses[v] && p.verses[v] >= GARBLE_THRESHOLD);
+        return `${VERSES[v]?.name || v}${knownByPerson ? ' [LIVING]' : ' [requires living carrier]'}`;
+      }).join(', ');
+      console.log(`    ${status} → ${b.age.name}`);
+      if (!b.met) {
+        console.log(`             needs: ${needs}`);
+        console.log(`             (carved doesn't count. a person must know it.)`);
+      }
+    }
+  }
+
+  // The lie
+  console.log();
+  console.log(`  everything is fine.`);
+  console.log();
+}
+
 // ── Status ──────────────────────────────────────────────────────────
 
-export function printStatus(state: GameState): void {
+export function printStatus(state: GameState, chronicleTier = 99): void {
+  if (state.ageKey === 'apocalypse') {
+    printApocalypseStatus(state, chronicleTier);
+    return;
+  }
+
   const seasonName = ['Spring', 'Summer', 'Autumn', 'Winter'][state.season];
   console.log();
   console.log(`═══════════════════════════════════════════════════`);
@@ -39,7 +195,7 @@ export function printStatus(state: GameState): void {
   console.log(`  Spirits: ${animalSpirits.map(fmtSpirit).join('  ')}`);
   const greatLine = greatSpirits.map(fmtSpirit).join('  ');
   const bandKnowsDisplay = (v: string) => state.people.some(p => p.verses[v] && p.verses[v] >= GARBLE_THRESHOLD);
-  const hasYeast = ['brew', 'bake', 'sourdough', 'mead'].some(s => bandKnowsDisplay(s));
+  const hasYeast = Object.keys(VERSES).some(id => VERSES[id].effects?.yeastSong && bandKnowsDisplay(id));
   if (yeastSpirit && hasYeast) {
     const ys = spirits[yeastSpirit[0]]?.spirit ?? 0;
     const yeastStr = `Yeast: ${ys > 0.7 ? 'thriving' : ys > 0.3 ? 'rising' : 'stirring'}`;
@@ -154,7 +310,7 @@ export function printStatus(state: GameState): void {
   }
 
   // Bridges
-  const bridges = getAvailableBridges(state);
+  const bridges = getAvailableBridges(state, chronicleTier);
   if (bridges.length > 0) {
     console.log();
     console.log(`  BRIDGES (where the song can take you):`);
@@ -219,7 +375,8 @@ export function printVerses(): void {
 // ── Help ────────────────────────────────────────────────────────────
 
 export function printHelp(): void {
-  console.log(`
+  if (true) {  // TODO: check state for apocalypse, but help is stateless here
+    console.log(`
   THE SONG — commands:
 
   node song.ts                     Advance one season (the world turns)
@@ -239,7 +396,9 @@ export function printHelp(): void {
   node song.ts study_ash <verse>   Learn a verse that grew from the ash
   node song.ts cross               Show available bridges to other ages
   node song.ts cross <age>         Cross a bridge to another age
+  node song.ts name <old> <new>    Give someone back their name
 
+  node song.ts chronicle            The fossil record — what persists across all games
   node song.ts reset               Start over from the beginning
 
   The setlist is what the community sings each season. Order matters.
@@ -254,7 +413,8 @@ export function printHelp(): void {
   Put two prerequisite songs adjacent on the setlist — between-songs emerge.
   The tree grows when you carve. It blocks the sun. You must fell it.
   The bears have their own age. You have to earn it.
-  The last age is the Tech Tree. The complexity itself kills you.
+  The last age is the Tech Tree. The only way out is through.
   Arrange.
   `);
+  }
 }

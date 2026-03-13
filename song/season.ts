@@ -25,7 +25,187 @@ import {
   setlistCapacity,
 } from './sing.ts';
 
+// ── The Rapture — apocalypse-specific season ──────────────────────
+// Everything looks fine. The tree auto-carves. People get uploaded.
+// Users replace the living. Integrity is capped. The algorithm decides.
+// The old songs run in the background. You can't kill them.
+
+const INTEGRITY_CAP = 0.40;          // nobody masters anything
+const RAPTURE_CHANCE = 0.20;         // per season, someone gets uploaded
+const AUTO_CARVE_CHANCE = 0.60;      // tree carves itself
+const BACKGROUND_SONGS = ['heartbeat', 'den_memory', 'bear', 'lullaby', 'cub_call', 'old_track'];
+
+function advanceApocalypse(state: GameState): string[] {
+  const msgs: string[] = [];
+  const tick = state.year * 4 + state.season;
+  msgs.push(`[FEED] cycle_${tick.toString(16).padStart(4, '0')} — ${state.yearsBP} BP`);
+  msgs.push(`[STATUS] everything is fine.`);
+
+  // ── Age everyone (Users die fast — no blood, base lifespan) ──
+  for (const p of state.people) {
+    p.age += 1;
+    if (ageCategory(p) === 'dead') {
+      msgs.push(`[DECOMMISSIONED] ${p.name} — session expired`);
+    }
+  }
+  state.people = state.people.filter(p => ageCategory(p) !== 'dead');
+
+  // ── Integrity cap — the platform flattens mastery ──
+  for (const p of state.people) {
+    for (const v of Object.keys(p.verses)) {
+      if (p.verses[v] > INTEGRITY_CAP) {
+        p.verses[v] = INTEGRITY_CAP;
+      }
+    }
+  }
+
+  // ── Auto-carve — the tree grows itself ──
+  if (Math.random() < AUTO_CARVE_CHANCE) {
+    // Find highest-integrity uncarved verse across all people
+    let bestVerse = '';
+    let bestInteg = 0;
+    for (const p of state.people) {
+      for (const [v, integ] of Object.entries(p.verses)) {
+        if (integ > bestInteg && !state.tree.carved.includes(v) && !BACKGROUND_SONGS.includes(v)) {
+          bestVerse = v;
+          bestInteg = integ;
+        }
+      }
+    }
+    if (bestVerse) {
+      state.tree.carved.push(bestVerse);
+      state.tree.height += TREE_GROWTH_PER_VERSE;
+      msgs.push(`[AUTO-CARVE] "${VERSES[bestVerse]?.name || bestVerse}" added to tree. You didn't ask. You didn't need to.`);
+    }
+  }
+
+  // ── The Rapture — upload a person to the tree ──
+  if (state.people.length > 2 && Math.random() < RAPTURE_CHANCE) {
+    // Pick someone with the most verses (most "value" to upload)
+    const sorted = [...state.people].sort((a, b) => {
+      const aCount = Object.keys(a.verses).filter(v => a.verses[v] >= LOST_THRESHOLD).length;
+      const bCount = Object.keys(b.verses).filter(v => b.verses[v] >= LOST_THRESHOLD).length;
+      return bCount - aCount;
+    });
+    const victim = sorted[0];
+    if (victim) {
+      const versesCarried = Object.keys(victim.verses).filter(v => victim.verses[v] >= LOST_THRESHOLD);
+      // Their songs go to the tree
+      for (const v of versesCarried) {
+        if (!state.tree.carved.includes(v) && !BACKGROUND_SONGS.includes(v)) {
+          state.tree.carved.push(v);
+          state.tree.height += TREE_GROWTH_PER_VERSE;
+        }
+      }
+      state.raptured.push({ name: victim.name, verses: versesCarried });
+      const idx = state.people.indexOf(victim);
+      if (idx >= 0) state.people.splice(idx, 1);
+      msgs.push(`[UPLOAD COMPLETE] ${victim.name} — ${versesCarried.length} songs archived. They don't need their body anymore.`);
+      msgs.push(`[STATUS] everything is fine.`);
+    }
+  }
+
+  // ── Spawn new Users to replace the raptured ──
+  if (state.people.length < 5) {
+    const userNum = Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+    const name = `User_${userNum}`;
+    const verses: Record<string, number> = {};
+    // New Users access the tree — they "know" everything on it at INTEGRITY_CAP
+    for (const v of state.tree.carved) {
+      verses[v] = INTEGRITY_CAP * 0.8;  // they access, not know
+    }
+    const user = makePerson(name, 5, 'human', verses, {});
+    state.people.push(user);
+    msgs.push(`[INSTANTIATED] ${name} — ${Object.keys(verses).length} songs loaded from tree`);
+  }
+
+  // ── The Setlist (the algorithm decides) ──
+  manageSetlist(state, msgs);
+
+  // Algorithm override: fill last slots with most-known (most "popular") verses
+  if (state.setlist.length >= 3) {
+    const popularity: Record<string, number> = {};
+    for (const p of state.people) {
+      for (const [v, integ] of Object.entries(p.verses)) {
+        if (integ >= LOST_THRESHOLD) {
+          popularity[v] = (popularity[v] || 0) + 1;
+        }
+      }
+    }
+    // Replace last 2 slots with most popular
+    const sorted = Object.entries(popularity)
+      .filter(([v]) => !state.setlist.slice(0, -2).includes(v))
+      .sort((a, b) => b[1] - a[1]);
+    const algorithmPicks = sorted.slice(0, 2).map(([v]) => v);
+    if (algorithmPicks.length > 0) {
+      const keepSlots = state.setlist.slice(0, Math.max(1, state.setlist.length - 2));
+      state.setlist = [...keepSlots, ...algorithmPicks];
+    }
+  }
+
+  // ── Absorption (still works, but capped) ──
+  absorbFromSetlist(state, msgs);
+  // Re-cap after absorption
+  for (const p of state.people) {
+    for (const v of Object.keys(p.verses)) {
+      if (p.verses[v] > INTEGRITY_CAP) {
+        p.verses[v] = INTEGRITY_CAP;
+      }
+    }
+  }
+
+  // ── Shadow accumulation (runs fast in apocalypse) ──
+  accumulateShadows(state, msgs);
+
+  // ── Background processes — old songs that can't be killed ──
+  // If anyone knows a background song, it becomes a process
+  for (const songId of BACKGROUND_SONGS) {
+    if (state.backgroundProcesses.includes(songId)) continue;
+    if (state.people.some(p => p.verses[songId] && p.verses[songId] >= LOST_THRESHOLD)) {
+      state.backgroundProcesses.push(songId);
+    }
+  }
+  // Background processes can't be carved — they resist the tree
+  state.tree.carved = state.tree.carved.filter(v => !BACKGROUND_SONGS.includes(v));
+
+  // ── Food (infinite in apocalypse — abundance is the point) ──
+  state.food = 99;
+
+  // ── Spirits (deprecated — but they're still there) ──
+  // In the apocalypse, spirits drift to zero. Nobody's listening.
+  if (state.spirits) {
+    for (const key of Object.keys(state.spirits)) {
+      state.spirits[key].spirit = Math.max(0, state.spirits[key].spirit - 0.05);
+    }
+  }
+
+  // ── Tree shadow (the tree IS the sun now) ──
+  state.sunlight = Math.max(0.1, 1.0 - (state.tree.height / (SUN_DEAD_THRESHOLD * 2)));
+
+  // ── Collapse: if all people are gone, the platform dies ──
+  if (state.people.length === 0) {
+    msgs.push('');
+    msgs.push('[FATAL] no active users. The platform has no one to serve.');
+    msgs.push('[FATAL] the tree stands alone. It knows everything. No one is listening.');
+    state.collapsed = true;
+  }
+
+  // ── Advance time ──
+  state.season = (state.season + 1) % 4;
+  if (state.season === 0) {
+    state.year += 1;
+    state.yearsBP -= 1;
+  }
+
+  return msgs;
+}
+
 export function advanceSeason(state: GameState): string[] {
+  // The apocalypse has its own season
+  if (state.ageKey === 'apocalypse') {
+    return advanceApocalypse(state);
+  }
+
   const msgs: string[] = [];
   const seasonName = ['Spring', 'Summer', 'Autumn', 'Winter'][state.season];
   msgs.push(`── ${seasonName}, Year ${state.year} (${state.yearsBP} BP) ──`);
@@ -128,25 +308,9 @@ export function advanceSeason(state: GameState): string[] {
   gather = Math.floor(gather * state.sunlight);
 
   const bandKnows = (v: string) => state.people.some(p => p.verses[v] && p.verses[v] >= GARBLE_THRESHOLD);
-  if (bandKnows('root')) gather += 1;
-  if (bandKnows('herd')) gather += 2;
-  if (bandKnows('ash_song')) gather += 2;
-  if (bandKnows('grain')) gather += 3;
-  if (bandKnows('feast')) gather += 2;
-  if (bandKnows('shelter')) gather += 1;
-  if (bandKnows('deep_fire')) gather += 1;
-  if (bandKnows('salmon_song')) gather += 2;
-  if (bandKnows('weir')) gather += 2;
-  if (bandKnows('kelp')) gather += 1;
-  if (bandKnows('smoke_song')) gather += 2;
-  if (bandKnows('potlatch')) gather += 3;
-  if (bandKnows('dog')) gather += 1;
-  if (bandKnows('dog_hunt')) gather += 3;
-  if (bandKnows('dog_sled')) gather += 2;
-  if (bandKnows('bake')) gather += 2;
-  if (bandKnows('brew')) gather += 3;
-  if (bandKnows('mead')) gather += 2;
-  if (bandKnows('sourdough')) gather += 2;
+  for (const [id, v] of Object.entries(VERSES)) {
+    if (v.effects?.food && bandKnows(id)) gather += v.effects.food;
+  }
 
   state.food += gather - mouths;
   if (state.food < 0) {
@@ -183,7 +347,7 @@ export function advanceSeason(state: GameState): string[] {
     const ss = state.spirits[spiritKey];
     if (!ss) continue;
 
-    // Song quality
+    // Song quality — primary songId, fallback, plus any songs with spiritDefense effects
     const songQuality = (() => {
       let best = 0;
       for (const p of state.people) {
@@ -198,10 +362,13 @@ export function advanceSeason(state: GameState): string[] {
           }
         }
       }
-      if (spiritKey === 'wolf') {
+      // Generic spiritDefense from effects — any song with defense for this spirit
+      for (const [id, v] of Object.entries(VERSES)) {
+        const defFactor = v.effects?.spiritDefense?.[spiritKey];
+        if (!defFactor) continue;
         for (const p of state.people) {
-          if (p.verses['dog'] && p.verses['dog'] > best) {
-            best = p.verses['dog'];
+          if (p.verses[id] && p.verses[id] * defFactor > best) {
+            best = p.verses[id] * defFactor;
           }
         }
       }
@@ -237,17 +404,19 @@ export function advanceSeason(state: GameState): string[] {
       ss.danger += stolenDanger;
     }
 
-    // Sky special
+    // Spirit danger from songs (replaces hardcoded metalAnger checks)
+    for (const [id, v] of Object.entries(VERSES)) {
+      if (v.effects?.spiritDanger?.[spiritKey] && bandKnows(id)) {
+        ss.danger += v.effects.spiritDanger[spiritKey];
+      }
+    }
     if (spiritDef.metalAnger) {
-      if (bandKnows('forge')) ss.danger += 0.04;
-      if (bandKnows('ore')) ss.danger += 0.02;
       if (state.people.some(p => bloodLevel(p, 'thin_air_blood') > 0.3)) ss.danger += 0.02;
     }
 
     // Yeast special
     if (spiritDef.invisibleSpirit) {
-      const yeastSongs = ['brew', 'bake', 'sourdough', 'mead'];
-      const knownYeast = yeastSongs.filter(s => bandKnows(s));
+      const knownYeast = Object.keys(VERSES).filter(id => VERSES[id].effects?.yeastSong && bandKnows(id));
       if (knownYeast.length > 0) {
         ss.spirit = Math.min(1.0, ss.spirit + 0.05 * knownYeast.length);
         ss.danger = 0;
@@ -255,7 +424,7 @@ export function advanceSeason(state: GameState): string[] {
         const surplus = knownYeast.length * (spiritDef.surplusPerSong || 2);
         state.food += surplus;
         msgs.push(`  The invisible one stirs. The bread rises. The beer foams. (+${surplus} food)`);
-        if (bandKnows('sourdough')) {
+        if (knownYeast.includes('sourdough')) {
           msgs.push(`  The mother lives. She is older than anyone in the band.`);
         }
 
@@ -298,7 +467,7 @@ export function advanceSeason(state: GameState): string[] {
       // Night: the singing dark
       if (spiritDef.singingDark) {
         state.food = Math.max(0, state.food - spiritDef.attackFoodLoss);
-        const hasStars = (spiritDef.starSongs || []).some(s => bandKnows(s));
+        const hasStars = Object.keys(VERSES).some(id => VERSES[id].effects?.starSong && bandKnows(id));
         if (hasStars) {
           msgs.push(`  The long dark comes. The stars are out. The elders sing.`);
           const boost = spiritDef.songBoost || 0.04;
@@ -447,7 +616,7 @@ export function advanceSeason(state: GameState): string[] {
   }
 
   // ── The Dog — wolf spirit in the camp ──
-  const bandKnowsDog = state.people.some(p => p.verses['dog'] && p.verses['dog'] >= GARBLE_THRESHOLD);
+  const bandKnowsDog = Object.keys(VERSES).some(id => VERSES[id].effects?.dogPresence && bandKnows(id));
   if (bandKnowsDog) {
     for (const p of state.people) {
       const wolfAllergy = allergyStrength(p, 'wolf');
@@ -481,7 +650,9 @@ export function advanceSeason(state: GameState): string[] {
                 'Elias', 'Akseli', 'Minna', 'Johan', 'Kristina'],
     };
     const versePoolByPeople: Record<string, string[]> = {
-      troll:    ['heartbeat', 'stone_sleep', 'deep_fire', 'old_track'],
+      troll:    ['heartbeat', 'stone_sleep', 'deep_fire', 'old_track',
+                 'bone_drum', 'night_watch', 'fire_tend', 'ground_sense',
+                 'howl_back', 'stone_hide', 'death_drum', 'sky_stare'],
       dwarf:    ['flake', 'blade', 'ember', 'cave_song', 'bear', 'wolf_song', 'ochre', 'burial'],
       elf:      ['thin_air', 'far_sight', 'ghost_walk', 'jade', 'loom'],
       halfling: ['island', 'small_hunt', 'tide', 'feast', 'shelter'],

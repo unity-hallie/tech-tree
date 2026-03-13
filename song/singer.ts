@@ -269,7 +269,7 @@ export const NAMES_BY_AGE: Record<string, string[]> = {
   grain:   ['Marjatta', 'Pellervo', 'Sampsa', 'Ahti', 'Tuoni', 'Mielikki', 'Tapio'],
   iron:    ['Elias', 'Akseli', 'Minna', 'Johan', 'Kristina', 'Kaarle', 'Aleksis'],
   remembering: ['Aino', 'Joukahainen', 'Ilmatar', 'Kullervo', 'Louhi', 'Lemminkainen', 'Vainamoinen'],
-  apocalypse:  ['User', 'Admin', 'Founder', 'Investor', 'Influencer', 'Intern', 'The-Algorithm'],
+  apocalypse:  ['User_7734', 'User_0451', 'User_1984', 'Admin_0001', 'User_2038', 'User_0000', 'User_FFFF'],
 };
 
 export const AGE_DEFAULT_PEOPLE: Record<string, string> = {
@@ -279,14 +279,14 @@ export const AGE_DEFAULT_PEOPLE: Record<string, string> = {
 
 export const AGE_BASE_SONGS: Record<string, Record<string, number>> = {
   bears:   { den_memory: 1.0, cub_call: 0.8 },
-  stone:   { heartbeat: 1.0 },
+  stone:   { heartbeat: 1.0, bone_drum: 0.5 },
   caves:   { heartbeat: 0.7, flake: 0.6 },
   meeting: { lullaby: 0.8, root: 0.6, heartbeat: 0.5 },
   ice:     { lullaby: 0.8, root: 0.6, ember: 0.5 },
   grain:   { lullaby: 0.8, root: 0.7, spark: 0.5 },
   iron:    { lullaby: 0.8, root: 0.6, spark: 0.5, writing: 0.4 },
   remembering: { lullaby: 0.8, root: 0.6 },
-  apocalypse:  { algorithm: 0.9, platform: 0.7, writing: 0.5 },
+  apocalypse:  { algorithm: 0.35, platform: 0.35, writing: 0.35, content: 0.35, optimize: 0.35, scale: 0.35 },
 };
 
 // Birth names for the yeast-surplus births
@@ -329,14 +329,35 @@ export function generateStartingPeople(ageKey: string, inheritedSongs: Record<st
   if (ageKey === 'stone' && inheritedKeys.length === 0) {
     // Trolls carry old_blood — lifespan ~8x. Youth to ~32, adult to ~128, elder to ~192.
     return [
-      makePerson('Grok', 160, 'troll', { heartbeat: 1.0 }),
-      makePerson('Thud', 120, 'troll', { heartbeat: 0.9 }),
-      makePerson('Rumble', 80, 'troll', { heartbeat: 0.8 }),
+      makePerson('Grok', 160, 'troll', { heartbeat: 1.0, deep_fire: 0.4 }),
+      makePerson('Thud', 120, 'troll', { heartbeat: 0.9, bone_drum: 0.5 }),
+      makePerson('Rumble', 80, 'troll', { heartbeat: 0.8, howl_back: 0.4 }),
       makePerson('Ember-Eye', 50, 'troll', { heartbeat: 0.7 }),
       makePerson('Stone-Hand', 20, 'troll', {}),
       makePerson('Old-Walk', 170, 'troll', { heartbeat: 1.0, old_track: 0.6 }),
       makePerson('Still-One', 140, 'troll', { heartbeat: 1.0, stone_sleep: 0.5 }),
     ];
+  }
+
+  if (ageKey === 'apocalypse') {
+    // Users: instantiated, not born. No blood. Know everything at 35%.
+    // The tree knows it all. They just access it. They don't remember anything.
+    const users: Person[] = [];
+    const userNames = names;
+    const allVerseKeys = Object.keys(baseSongs);
+    // Also pull in inherited songs at low integrity
+    for (const [v, integ] of Object.entries(inheritedSongs)) {
+      if (!baseSongs[v]) allVerseKeys.push(v);
+    }
+    for (let i = 0; i < 7; i++) {
+      const verses: Record<string, number> = {};
+      for (const v of allVerseKeys) {
+        verses[v] = baseSongs[v] || Math.min(0.35, (inheritedSongs[v] || 0) * 0.5);
+      }
+      // Users have empty blood — no heritage, no body, no lifespan bonus
+      users.push(makePerson(userNames[i % userNames.length], 5 + i * 2, 'human', verses, {}));
+    }
+    return users;
   }
 
   // Generic generation — works for any age with inherited songs

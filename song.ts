@@ -21,8 +21,12 @@ import { AGES, getAvailableBridges, crossBridge, determineApocalypse } from './s
 import { setlistCapacity, positionFactor } from './song/sing.ts';
 import { advanceSeason } from './song/season.ts';
 import { printStatus, printVerses, printHelp } from './song/voice.ts';
+import {
+  readChronicle, writeChronicle, endGame, snapshotAge, printChronicle,
+  computeUnlockTier,
+} from './song/chronicle.ts';
 
-const STATE_FILE = path.join(import.meta.dirname!, 'state.json');
+const STATE_FILE = path.join(__dirname, 'state.json');
 
 // ── Actions ─────────────────────────────────────────────────────────
 
@@ -93,9 +97,9 @@ function actionCarve(state: GameState, verseId: string): string[] {
 
   const carver = state.people.find(p =>
     p.verses[verseId] && p.verses[verseId] >= 0.7 &&
-    p.verses['tree_song'] && p.verses['tree_song'] >= GARBLE_THRESHOLD
+    Object.entries(VERSES).some(([id, v]) => v.effects?.carveEnable && p.verses[id] && p.verses[id] >= GARBLE_THRESHOLD)
   );
-  if (!carver) return ['Need someone who knows this verse well (70%+) AND knows "The Carving Song".'];
+  if (!carver) return ['Need someone who knows this verse well (70%+) AND knows a carving song.'];
 
   state.tree.carved.push(verseId);
   state.tree.height += TREE_GROWTH_PER_VERSE;
@@ -301,21 +305,35 @@ function main() {
         Object.assign(VERSES, age.newSongs);
       }
     }
+    // Ensure apocalypse fields exist on old saves
+    if (!state.raptured) state.raptured = [];
+    if (!state.backgroundProcesses) state.backgroundProcesses = [];
   } else {
     state = newState();
+    // First game ever — mark start on chronicle
+    const chron = readChronicle();
+    if (!(chron as any)._currentGameStart) {
+      (chron as any)._currentGameStart = new Date().toISOString();
+      (chron as any)._currentGameAges = [];
+      writeChronicle(chron);
+    }
   }
+
+  // Read the chronicle tier — the world only reveals what you've earned
+  const _chron = readChronicle();
+  const tier = _chron.unlockedBridgeTier || 0;
 
   if (!action) {
     const msgs = advanceSeason(state);
     fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
     for (const m of msgs) console.log(m);
-    printStatus(state);
+    printStatus(state, tier);
     return;
   }
 
   switch (action) {
     case 'status':
-      printStatus(state);
+      printStatus(state, tier);
       break;
 
     case 'verses':
@@ -377,7 +395,7 @@ function main() {
 
     case 'cross': {
       if (!args[1]) {
-        const bridges = getAvailableBridges(state);
+        const bridges = getAvailableBridges(state, tier);
         if (bridges.length === 0) {
           console.log('  No bridges from this age. Sing more. Carve more.');
           break;
@@ -393,19 +411,41 @@ function main() {
         console.log('  Usage: node song.ts cross <age_key>');
         break;
       }
-      const result = crossBridge(state, args[1]);
+      // Snapshot current age before crossing
+      const chronicle = readChronicle();
+      const ageSnap = snapshotAge(state, args[1], '');
+      if (!chronicle._currentGameAges) chronicle._currentGameAges = [];
+      (chronicle as any)._currentGameAges.push(ageSnap);
+
+      const result = crossBridge(state, args[1], tier);
       for (const m of result.msgs) console.log(m);
       if (result.nextState) {
         state = result.nextState;
         fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
-        printStatus(state);
+
+        // Eagerly update the chronicle's deepest age and tier
+        const AGE_ORDER = ['bears', 'stone', 'caves', 'meeting', 'ice', 'grain', 'iron', 'remembering', 'apocalypse'];
+        const newDepth = AGE_ORDER.indexOf(args[1]);
+        const oldDepth = AGE_ORDER.indexOf(chronicle.deepestAge || '');
+        if (newDepth > oldDepth) {
+          chronicle.deepestAge = args[1];
+        }
+        chronicle.unlockedBridgeTier = Math.max(
+          chronicle.unlockedBridgeTier || 0,
+          computeUnlockTier(chronicle.deepestAge),
+        );
+        writeChronicle(chronicle);
+
+        printStatus(state, chronicle.unlockedBridgeTier);
+      } else {
+        writeChronicle(chronicle);
       }
       break;
     }
 
     case 'next_age': {
       console.log('  Time is not a line. Use "node song.ts cross" to see where the song can take you.');
-      const bridges = getAvailableBridges(state);
+      const bridges = getAvailableBridges(state, tier);
       const open = bridges.filter(b => b.met);
       if (open.length > 0) {
         console.log('  Open bridges:');
@@ -416,12 +456,58 @@ function main() {
       break;
     }
 
-    case 'reset':
+    case 'reset': {
+      // Record the ending game in the chronicle
+      const chron = readChronicle();
+      const existingAges = (chron as any)._currentGameAges || [];
+      endGame(chron, state, 'reset', existingAges);
+      writeChronicle(chron);
+
       state = newState();
+      // Mark game start on chronicle
+      const freshChron = readChronicle();
+      (freshChron as any)._currentGameStart = new Date().toISOString();
+      (freshChron as any)._currentGameAges = [];
+      writeChronicle(freshChron);
+
       fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
       console.log('  From the ash, a new beginning.');
-      printStatus(state);
+      console.log(`  (Game ${freshChron.totalGames + 1}. The chronicle remembers ${freshChron.totalGames} before.)`);
+      printStatus(state, freshChron.unlockedBridgeTier || 0);
       break;
+    }
+
+    case 'chronicle': {
+      const chron = readChronicle();
+      printChronicle(chron);
+      break;
+    }
+
+    case 'name': {
+      if (args.length < 3) {
+        console.log('Usage: node song.ts name <current_name> <new_name>');
+        console.log('  Give a User back their name. They remember something.');
+        break;
+      }
+      const target = state.people.find(p => p.name.toLowerCase() === args[1]?.toLowerCase());
+      if (!target) {
+        console.log(`No one named "${args[1]}" in the band.`);
+        break;
+      }
+      const oldName = target.name;
+      target.name = args[2];
+      console.log(`  ${oldName} blinks.`);
+      console.log(`  "${args[2]}," they say. "That's my name."`);
+      console.log(`  Something stirs. Not in the tree. In them.`);
+      // Naming gives a small integrity boost to all their songs
+      for (const v of Object.keys(target.verses)) {
+        if (target.verses[v] >= LOST_THRESHOLD) {
+          target.verses[v] = Math.min(1.0, target.verses[v] + 0.05);
+        }
+      }
+      fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+      break;
+    }
 
     default:
       console.log(`Unknown action: ${action}`);

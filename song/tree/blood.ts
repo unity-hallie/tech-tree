@@ -7,10 +7,12 @@ import { type BloodVerse, type PeopleBlood } from './index.ts';
 
 export const BLOOD_VERSES: Record<string, BloodVerse> = {
   deep_blood:    { name: 'Deep Blood',    desc: 'The old fire in the marrow. Millions of years of walking upright.',
-                   triggers: ['bear'],     eases: ['heartbeat', 'deep_fire', 'old_track', 'stone_sleep'],
+                   triggers: ['bear'],     eases: ['heartbeat', 'deep_fire', 'old_track', 'stone_sleep',
+                                                    'bone_drum', 'night_watch', 'fire_tend', 'ground_sense',
+                                                    'howl_back', 'stone_hide', 'death_drum', 'sky_stare'],
                    patterns: ['troll'] },
   stone_blood:   { name: 'Stone Blood',   desc: 'The patience of rock. How to endure. How to wait.',
-                   triggers: ['bear', 'wolf', 'cat'],  eases: ['stone_sleep', 'flake', 'blade'],
+                   triggers: ['bear', 'wolf', 'cat'],  eases: ['stone_sleep', 'flake', 'blade', 'stone_hide', 'night_watch'],
                    patterns: ['troll', 'dwarf'] },
   craft_blood:   { name: 'Craft Blood',   desc: 'Hands that remember. The shaping instinct.',
                    triggers: ['wolf'],     eases: ['flake', 'blade', 'ember', 'forge'],
@@ -40,7 +42,7 @@ export const BLOOD_VERSES: Record<string, BloodVerse> = {
                    triggers: [],           eases: ['tide', 'sea_cross', 'salmon_song', 'weir', 'sail', 'kelp'],
                    patterns: ['halfling'] },
   old_blood:     { name: 'Old Blood',     desc: 'The slow clock. Deep time in the marrow. Trolls measure life in centuries, not decades.',
-                   triggers: ['bear'],     eases: ['heartbeat', 'old_track', 'stone_sleep'],
+                   triggers: ['bear'],     eases: ['heartbeat', 'old_track', 'stone_sleep', 'bone_drum', 'ground_sense', 'night_watch', 'sky_stare'],
                    patterns: ['troll'],
                    staff: { lifespan: 7.0 } },
   den_blood:     { name: 'Den Blood',     desc: 'The oldest memory. Before hands. Before uprightness. The cave remembers.',

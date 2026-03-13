@@ -1,7 +1,24 @@
 // tree/index.ts — the tech tree. types, registry, constants.
-// Every file in this directory is a branch. They all register into VERSES.
+// Songs load from songs.jsonl — one JSON object per line.
+// Adding a song = adding a line to the data file.
+
+import * as fs from 'fs';
+import * as path from 'path';
 
 // ── Types ─────────────────────────────────────────────────────────────
+
+export type SongEffects = {
+  food?: number;              // +N food/season when band knows this song
+  capacity?: number;          // +N setlist slots
+  literacy?: boolean;         // enables reading from tree
+  carveEnable?: boolean;      // enables carving
+  spiritDefense?: Record<string, number>;  // { spiritKey: protectionFactor }
+  spiritDanger?: Record<string, number>;   // { spiritKey: +dangerAmount }
+  starSong?: boolean;         // counts for night's star-song gift
+  yeastSong?: boolean;        // counts for yeast spirit food multiplier
+  dogPresence?: boolean;      // enables dog-in-camp mechanic
+  script?: string;            // RESERVED — future scripting hook
+};
 
 export type Verse = {
   tradition: string;
@@ -10,13 +27,15 @@ export type Verse = {
   desc: string;
   prereqs: string[];
   difficulty: number;
+  effects?: SongEffects;
   shadow_of?: string;
   shadow_when?: string;
   shadow_rate?: number;
   redeems_with?: string;
   redeems_into?: string;
   emerges_from?: string[];
-  staff?: Record<string, number>;  // modifiers this verse carries. friction_dwarf, etc.
+  staff?: Record<string, number>;
+  age?: string;               // which age introduces this song
 };
 
 export type People = {
@@ -31,7 +50,7 @@ export type BloodVerse = {
   triggers: string[];
   eases: string[];
   patterns: string[];
-  staff?: Record<string, number>;  // modifiers this blood carries. lifespan, teaching, etc.
+  staff?: Record<string, number>;
 };
 
 export type PeopleBlood = {
@@ -40,7 +59,7 @@ export type PeopleBlood = {
 };
 
 // ── The Registry ──────────────────────────────────────────────────────
-// The mutable song registry. Branches register into this. Ages add to it.
+// Loaded from songs.jsonl. Ages can still add to it at runtime.
 
 export const VERSES: Record<string, Verse> = {};
 
@@ -56,23 +75,41 @@ export const LOST_THRESHOLD = 0.1;
 export const LEARN_RATE_FOCUSED = 0.25;
 export const WRITING_INTEGRITY = 0.5;
 
-// ── Load all branches ─────────────────────────────────────────────────
+// ── Load songs from JSONL ─────────────────────────────────────────────
 
-import { BEAR_SONGS } from './bear.ts';
-import { TROLL_SONGS } from './troll.ts';
-import { DWARF_SONGS } from './dwarf.ts';
-import { ELF_SONGS } from './elf.ts';
-import { HALFLING_SONGS } from './halfling.ts';
-import { HUMAN_SONGS } from './human.ts';
-import { BETWEEN_SONGS } from './between.ts';
-import { SHADOW_SONGS } from './shadow.ts';
-import { ASH_VERSES } from './ash.ts';
+const SONGS_FILE = path.join(__dirname, '..', '..', 'songs.jsonl');
 
-Object.assign(VERSES, BEAR_SONGS, TROLL_SONGS, DWARF_SONGS, ELF_SONGS,
-              HALFLING_SONGS, HUMAN_SONGS, BETWEEN_SONGS, SHADOW_SONGS, ASH_VERSES);
+function loadSongs(): void {
+  const raw = fs.readFileSync(SONGS_FILE, 'utf-8');
+  const lines = raw.split('\n').filter(l => l.trim());
+  for (const line of lines) {
+    const song = JSON.parse(line);
+    const { id, ...rest } = song;
+    VERSES[id] = rest as Verse;
+  }
+}
+
+loadSongs();
+
+// ── Ash verses — filtered from the loaded songs ──────────────────────
+
+export const ASH_VERSES: Record<string, Verse> = {};
+for (const [id, v] of Object.entries(VERSES)) {
+  if (v.emerges_from) ASH_VERSES[id] = v;
+}
+
+// ── Age-introduced songs — grouped by age ────────────────────────────
+// Ages can use this to register their songs when entered.
+
+export const AGE_SONGS: Record<string, Record<string, Verse>> = {};
+for (const [id, v] of Object.entries(VERSES)) {
+  if (v.age) {
+    if (!AGE_SONGS[v.age]) AGE_SONGS[v.age] = {};
+    AGE_SONGS[v.age][id] = v;
+  }
+}
 
 // Re-export everything branches export
 export { PEOPLES } from './human.ts';
-export { ASH_VERSES } from './ash.ts';
 export { BLOOD_VERSES, PEOPLE_BLOOD, BLOOD_DRIFT, BLOOD_THRESHOLD, BLOOD_ALLERGY_THRESHOLD,
          SONG_BLOODS, SONG_SINK_THRESHOLD, SONG_SINK_AMOUNT } from './blood.ts';
